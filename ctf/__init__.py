@@ -1,3 +1,9 @@
+"""CTF - __init__.py
+
+Contains the globally-required objects for the API to function.
+Loads blueprints to their respective routes.
+"""
+
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 
