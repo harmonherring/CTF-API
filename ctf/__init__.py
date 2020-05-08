@@ -13,3 +13,9 @@ app = Flask(__name__)
 app.config.from_object(config)
 
 db = SQLAlchemy(app)
+
+# pylint: disable=wrong-import-position
+from ctf.routes import categories
+# pylint: enable=wrong-import-position
+
+app.register_blueprint(categories, url_prefix='/categories')
