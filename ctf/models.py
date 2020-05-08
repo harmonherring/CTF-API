@@ -43,6 +43,7 @@ class Challenges(db.Model):
     tags = db.relationship('ChallengeTags', backref='challenges')
     category = relationship('Categories')
     difficulty = relationship('Difficulties')
+    flags = db.relationship('Flags', backref='challenges')
 
     def __init__(self, difficulty: str, category: str, title: str, description: str):
         """
@@ -61,7 +62,7 @@ class Challenges(db.Model):
     @classmethod
     def create(cls, difficulty: str, category: str, title: str, description: str) -> dict:
         """
-        Wraps the Challenge init method to immediately create and return a Challenge
+        Wraps some flask-sqlalchemy functions to immediately commit new Challenge to the database
 
         :param difficulty: Text description of the difficulty. Must exist in Difficulties table.
         :param category: Text description of the category. Must exist in Categories table.
@@ -84,7 +85,7 @@ class Challenges(db.Model):
             'category': self.category_name,
             'title': self.title,
             'description': self.description,
-            'tags': [tag.to_dict()['tag'] for tag in self.tags]
+            'tags': [tag.to_dict()['tag'] for tag in self.tags],
         }
 
 
@@ -116,12 +117,51 @@ class Flags(db.Model):
 
     __tablename__ = 'flags'
 
-    id = Column(Integer, primary_key=True, server_default=text("nextval('flags_id_seq'::regclass)"))
+    id = Column(Integer, primary_key=True)
     point_value = Column(SmallInteger, nullable=False)
     flag = Column(Text, nullable=False)
     challenge_id = Column(ForeignKey('challenges.id'), nullable=False, index=True)
 
     challenge = relationship('Challenges')
+
+    def __init__(self, point_value: int, flag: str, challenge_id: int):
+        """
+        Create a Flag
+
+        :param point_value: The points to be awarded to those who solve the flag
+        :param flag: The flag's data, to be solved by the user
+        :param challenge_id: The ID this flag corresponds to
+        """
+        self.point_value = point_value
+        self.flag = flag
+        self.challenge_id = challenge_id
+
+    @classmethod
+    def create(cls, point_value: int, flag: str, challenge_id: int) -> dict:
+        """
+        Wraps some flask-sqlalchemy functions to immediately commit the new flag to the database
+
+        :param point_value: The points to be awarded to those who solve the flag
+        :param flag: The flag's data, to be solved by the user
+        :param challenge_id: The ID this flag corresponds to
+        """
+        new_flag = Flags(point_value, flag, challenge_id)
+        db.session.add(new_flag)
+        db.session.commit()
+        return new_flag.to_dict()
+
+    def to_dict(self) -> dict:
+        """
+        :return: JSON serializable representation of a Flag
+        """
+
+        return {
+            'id': self.id,
+            'point_value': self.point_value,
+            'flag': self.flag,
+            'challenge_id': self.challenge_id
+        }
+
 
 
 class Hints(db.Model):
@@ -130,7 +170,7 @@ class Hints(db.Model):
 
     __tablename__ = 'hints'
 
-    id = Column(Integer, primary_key=True, server_default=text("nextval('hints_id_seq'::regclass)"))
+    id = Column(Integer, primary_key=True)
     cost = Column(SmallInteger, nullable=False)
     hint = Column(Text, nullable=False)
     challenge_id = Column(ForeignKey('challenges.id'), nullable=False, index=True)
