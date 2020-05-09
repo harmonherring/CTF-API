@@ -19,3 +19,7 @@ OIDC_CLIENT_CONFIG = {
     'client_secret': environ.get('CTF_OIDC_CLIENT_SECRET', ''),
     'post_logout_redirect_uris': [environ.get('CTF_OIDC_LOGOUT_REDIRECT_URI', 'https://quotefault-api.csh.rit.edu/logout')]
 }
+
+# LDAP config
+LDAP_DN = environ.get('CTF_LDAP_DN', "")
+LDAP_PW = environ.get('CTF_LDAP_PW', "")
