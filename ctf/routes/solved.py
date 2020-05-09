@@ -7,6 +7,7 @@ from flask import Blueprint, jsonify, request
 
 from ctf import auth
 from ctf.models import Solved, Flag
+from ctf.utils import TSAPreCheck
 
 solved_bp = Blueprint('solved', __name__)
 
@@ -19,11 +20,11 @@ def solved_flags(flag_id: int):
 
     :GET: Get a list of the users who have solved this flag
     """
-    if not Flag.query.filter_by(id=flag_id).first():
-        return jsonify({
-            'status': "error",
-            'message': "Flag doesn't exist"
-        }), 404
+    flag = Flag.query.filter_by(id=flag_id).first()
+    precheck = TSAPreCheck().ensure_existence((flag, Flag))
+    if precheck.error_code:
+        return jsonify(precheck.message), precheck.error_code
+
     if request.method == 'GET':
         return jsonify([solved.to_dict()['username'] for solved in Solved.query.filter_by(
             flag_id=flag_id).all()]), 200
