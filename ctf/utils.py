@@ -2,7 +2,7 @@
 
 Contains useful functions used across many parts of the API
 """
-from typing import Tuple, Any, Type
+from typing import Tuple, Any, Type, Union
 
 from flask import request, session
 from flask_sqlalchemy import Model
@@ -117,3 +117,21 @@ class TSAPreCheck:
                     'message': query[1].__name__ + " already exists"
                 }
         return self
+
+    def get_current_user(self) -> Union[str, None]:
+        """
+        Returns the current user. If unable to get the current username, returns an instance of
+        self and sets 'error_code' and 'message' appropriately.
+        """
+        userinfo = session.get('userinfo')
+        if userinfo:
+            current_user = userinfo.get('preferred_username')
+            if current_user:
+                return current_user
+        self.error_code = 401
+        self.message = {
+            'status': "error",
+            'message': "Either the 'userinfo' or 'preferred_username' values don't exist in your "
+                       "session"
+        }
+        return None

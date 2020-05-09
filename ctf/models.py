@@ -258,6 +258,13 @@ class Flag(db.Model):
         db.session.commit()
         return new_flag.to_dict()
 
+    def delete(self):
+        """
+        Removes this instance of Flag from the database
+        """
+        db.session.delete(self)
+        db.session.commit()
+
     def to_dict(self) -> dict:
         """
         :return: JSON serializable representation of a Flag
