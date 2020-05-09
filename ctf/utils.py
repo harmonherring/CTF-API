@@ -21,7 +21,6 @@ def run_checks(**kwargs) -> (dict, int):
                 'status': "error",
                 'message': "Your session doesn't have the 'preferred_username' value"
             }, 401
-        print("Am I the person? " + str(current_user == kwargs['is_authorized']))
         if not (is_ctf_admin(current_user) or current_user == kwargs['is_authorized']):
             return {
                 'status': "error",
@@ -48,3 +47,19 @@ def run_checks(**kwargs) -> (dict, int):
                                "application/json body: " + ', '.join([str(missing_arg) for
                                                                       missing_arg in missing_args])
                 }, 422
+        if kwargs['ensure_existence']:
+            # This test ensures that the objects passed into the associated kwargs list exist.
+            for argument in kwargs['ensure_existence']:
+                if not argument:
+                    return {
+                        'status': "error",
+                        'message': argument.__class__.__name__ + " does not exist"
+                    }, 404
+        if kwargs['ensure_nonexistence']:
+            # This test ensures that the obejcts passed into the associated kwargs list don't exist
+            for argument in kwargs['ensure_nonexistence']:
+                if argument:
+                    return {
+                        'status': "error",
+                        'message': argument.__clas__.__name__ + " already exists"
+                    }, 409
