@@ -280,9 +280,9 @@ class Hints(db.Model):
     id = Column(Integer, primary_key=True)
     cost = Column(SmallInteger, nullable=False)
     hint = Column(Text, nullable=False)
-    challenge_id = Column(ForeignKey('challenges.id'), nullable=False, index=True)
+    flag_id = Column(ForeignKey('flags.id'), nullable=False, index=True)
 
-    challenge = relationship('Challenges')
+    flag = relationship('Flags')
 
 
 class Solved(db.Model):
