@@ -15,18 +15,18 @@ def run_checks(**kwargs) -> (dict, int):
     keys = kwargs.keys()
     if "is_authorized" in keys:
         # Check to see if current user is admin or is the user specified by associated kwarg
-        if kwargs['is_authorized']:
-            current_user = session['userinfo'].get('preferred_username')
-            if not current_user:
-                return {
-                    'status': "error",
-                    'message': "Your session doesn't have the 'preferred_username' value"
-                }, 401
-            if not (is_ctf_admin(current_user) or current_user == kwargs['is_authorized']):
-                return {
-                    'status': "error",
-                    'message': "You aren't authorized for this action"
-                }, 403
+        current_user = session['userinfo'].get('preferred_username')
+        if not current_user:
+            return {
+                'status': "error",
+                'message': "Your session doesn't have the 'preferred_username' value"
+            }, 401
+        print("Am I the person? " + str(current_user == kwargs['is_authorized']))
+        if not (is_ctf_admin(current_user) or current_user == kwargs['is_authorized']):
+            return {
+                'status': "error",
+                'message': "You aren't authorized for this action"
+            }, 403
     if "has_json_args" in keys:
         if not request.is_json:
             return {

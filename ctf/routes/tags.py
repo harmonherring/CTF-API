@@ -3,12 +3,12 @@
 Contains routes pertaining to the Tags assigned to a Challenge
 """
 
-from flask import Blueprint, request, jsonify, session
+from flask import Blueprint, request, jsonify
 from sqlalchemy import func
 
 from ctf import auth
 from ctf.models import Challenges, ChallengeTags
-from ctf.ldap import is_ctf_admin
+from ctf.utils import run_checks
 
 
 tags_bp = Blueprint("tags", __name__)
@@ -42,24 +42,12 @@ def single_tag(challenge_id: int, tag_name: str):
     :DELETE: Delete a tag with 'tag_name' and 'challenge_id'
     """
     if request.method == 'POST':
-        current_username = session['userinfo'].get('preferred_username')
-        if not current_username:
-            return jsonify({
-                'status': "error",
-                'message': "Your session doesn't have the 'preferred_username' value"
-            }), 401
         challenge = Challenges.query.filter_by(id=challenge_id).first()
         if not challenge:
             return jsonify({
                 'status': "error",
                 'message': "Challenge doesn't exist"
             }), 404
-        # Check to see if admin or creator of challenge
-        if not (is_ctf_admin(current_username) or (challenge.submitter == current_username)):
-            return jsonify({
-                'status': "error",
-                'message': "You aren't authorized to create this tag"
-            }), 403
         tag = ChallengeTags.query.filter(func.lower(ChallengeTags.tag) == func.lower(tag_name),
                                          ChallengeTags.challenge_id == challenge_id).first()
         if tag:
@@ -67,27 +55,20 @@ def single_tag(challenge_id: int, tag_name: str):
                 'status': "error",
                 'message': "Tag already exists"
             }), 409
+
+        checker = run_checks(is_authorized=challenge.submitter)
+        if checker is not None:
+            return jsonify(checker[0]), checker[1]
+
         new_tag = ChallengeTags.create(challenge_id, tag_name)
         return jsonify(new_tag), 201
     elif request.method == 'DELETE':
-        current_username = session['userinfo'].get('preferred_username')
-        if not current_username:
-            return jsonify({
-                'status': "error",
-                'message': "Your session doesn't have the 'preferred_username' value"
-            }), 401
         challenge = Challenges.query.filter_by(id=challenge_id).first()
         if not challenge:
             return jsonify({
                 'status': "error",
                 'message': "Challenge doesn't exist"
             }), 404
-        # Check to see if admin or creator of challenge
-        if not (is_ctf_admin(current_username) or (challenge.submitter == current_username)):
-            return jsonify({
-                'status': "error",
-                'message': "You aren't authorized to delete this tag"
-            }), 403
         tag = ChallengeTags.query.filter(func.lower(ChallengeTags.tag) == func.lower(tag_name),
                                          ChallengeTags.challenge_id == challenge_id).first()
         if not tag:
@@ -95,5 +76,10 @@ def single_tag(challenge_id: int, tag_name: str):
                 'status': "error",
                 'message': "Tag doesn't exist"
             }), 409
+
+        checker = run_checks(is_authorized=challenge.submitter)
+        if checker is not None:
+            return jsonify(checker[0]), checker[1]
+
         tag.delete()
         return '', 204

@@ -3,11 +3,11 @@
 Contains the API routes pertaining to the available challenge difficulties
 """
 
-from flask import Blueprint, request, jsonify, session
+from flask import Blueprint, request, jsonify
 
 from ctf import auth
 from ctf.models import Difficulties
-from ctf.ldap import is_ctf_admin
+from ctf.utils import run_checks
 
 difficulties_bp = Blueprint("difficulties", __name__)
 
@@ -25,22 +25,10 @@ def all_difficulties():
         return jsonify([difficulty.to_dict()['name'] for difficulty in Difficulties.query.all()]),\
                200
     elif request.method == 'POST':
-        if not is_ctf_admin(session['userinfo'].get('preferred_username')):
-            return jsonify({
-                'status': "error",
-                'message': "You aren't authorized to create Difficulties"
-            }), 403
-        if not request.is_json:
-            return jsonify({
-                'status': "error",
-                'message': "Content-Type must be application/json"
-            }), 415
+        checker = run_checks(is_authorized=None, has_json_args=["name"])
+        if checker is not None:
+            return jsonify(checker[0]), checker[1]
         data = request.get_json()
-        if not data.get('name'):
-            return jsonify({
-                'status': "error",
-                'message': "'name' field is required"
-            }), 422
         if Difficulties.query.filter_by(name=data['name']).first():
             return jsonify({
                 'status': "error",
@@ -59,11 +47,9 @@ def single_difficulty(difficulty_name: str):
     :DELETE: Deletes the Difficulty identified by difficulty_name
     """
     if request.method == 'DELETE':
-        if not is_ctf_admin(session['userinfo'].get('preferred_username')):
-            return jsonify({
-                'status': "error",
-                'message': "You aren't authorized to delete Difficulties"
-            }), 403
+        checker = run_checks(is_authorized=None)
+        if checker is not None:
+            return jsonify(checker[0]), checker[1]
         difficulty = Difficulties.query.filter_by(name=difficulty_name).first()
         if not difficulty:
             return jsonify({

@@ -2,11 +2,11 @@
 
 Contains the routes pertaining to the categories a challenge can fit in to
 """
-from flask import Blueprint, jsonify, request, session
+from flask import Blueprint, jsonify, request
 
 from ctf import auth
 from ctf.models import Categories
-from ctf.ldap import is_ctf_admin
+from ctf.utils import run_checks
 
 categories_bp = Blueprint('categories', __name__)
 
@@ -21,26 +21,13 @@ def all_categories():
     :POST: Takes 'name' and 'description' values from application/json body and creates a new
         category
     """
-    print(session['userinfo'].get('preferred_username'))
     if request.method == 'GET':
         return jsonify([category.to_dict() for category in Categories.query.all()]), 200
     elif request.method == 'POST':
-        if not is_ctf_admin(session['userinfo'].get('preferred_username')):
-            return jsonify({
-                'status': "error",
-                'message': "You aren't authorized to create categories"
-            }), 403
-        if not request.is_json:
-            return jsonify({
-                'status': "error",
-                'message': "Content-Type must be application/json"
-            }), 415
+        checker = run_checks(is_authorized=None, has_json_args=["name", "description"])
+        if checker is not None:
+            return jsonify(checker[0]), checker[1]
         data = request.get_json()
-        if not data['name'] and data['description']:
-            return jsonify({
-                'status': "error",
-                'message': "'name' and 'description' fields are required"
-            }), 422
         if Categories.query.filter_by(name=data['name']).first():
             return jsonify({
                 'status': "error",
@@ -70,10 +57,8 @@ def single_category(category_name: str):
     if request.method == 'GET':
         return jsonify(category.to_dict()), 200
     elif request.method == 'DELETE':
-        if not is_ctf_admin(session['userinfo'].get('preferred_username')):
-            return jsonify({
-                'status': "error",
-                'message': "You aren't authorized to create categories"
-            }), 403
+        checker = run_checks(is_authorized=None)
+        if checker is not None:
+            return jsonify(checker[0]), checker[1]
         category.delete()
         return '', 204

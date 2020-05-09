@@ -7,7 +7,7 @@ from flask import Blueprint, request, jsonify, session
 
 from ctf import auth
 from ctf.models import Challenges, Difficulties, Categories
-from ctf.ldap import is_ctf_admin
+from ctf.utils import run_checks
 
 challenges_bp = Blueprint('challenges', __name__)
 
@@ -34,19 +34,12 @@ def all_challenges():
             challenge.to_dict() for challenge in Challenges.query.paginate(offset, limit).items
         ]), 200
     elif request.method == 'POST':
-        if not request.is_json:
-            return jsonify({
-                'status': "error",
-                'message': "Content-Type must be application/json"
-            }), 415
+        checker = run_checks(has_json_args=["title", "description", "author", "difficulty",
+                                            "category"])
+        if checker is not None:
+            return jsonify(checker[0]), checker[1]
+
         data = request.get_json()
-        if not (data.get('title') and data.get('description') and data.get('author') and
-                data.get('difficulty') and data.get('category')):
-            return jsonify({
-                'status': "error",
-                'message': "'title', 'description', 'author', 'difficulty', and 'category' "
-                           "fields are required"
-            }), 422
         category = Categories.query.filter_by(name=data['category'].lower()).first()
         difficulty = Difficulties.query.filter_by(name=data['difficulty'].lower()).first()
         if not (category and difficulty):
@@ -55,11 +48,6 @@ def all_challenges():
                 'message': "Nonexistent category or difficulty"
             }), 422
         submitter = session['userinfo'].get('preferred_username')
-        if not submitter:
-            return jsonify({
-                'status': "error",
-                'message': "Your session doesn't have the 'preferred_username' value"
-            }), 401
         new_challenge = Challenges.create(data['title'], data['description'], data['author'],
                                           submitter, difficulty, category)
         return jsonify(new_challenge), 201
@@ -84,23 +72,14 @@ def single_challenge(challenge_id: int):
                 'message': "Challenge doesn't exist"
             }), 404
     elif request.method == 'DELETE':
-        # Check to ensure that the deleter is an admin or the person who created the challenge
-        current_username = session['userinfo'].get('preferred_username')
-        if not current_username:
-            return jsonify({
-                'status': "error",
-                'message': "Your session doesn't have the 'preferred_username' value"
-            }), 401
         challenge = Challenges.query.filter_by(id=challenge_id).first()
         if not challenge:
             return jsonify({
                 'status': "error",
                 'message': "Challenge doesn't exist"
             }), 404
-        if not (is_ctf_admin(current_username) or (challenge.submitter == current_username)):
-            return jsonify({
-                'status': "error",
-                'message': "You aren't authorized to delete this challenge"
-            }), 403
+        checker = run_checks(is_authorized=challenge.submitter)
+        if checker is not None:
+            return jsonify(checker[0]), checker[1]
         challenge.delete()
         return '', 204
