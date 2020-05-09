@@ -271,7 +271,6 @@ class Flags(db.Model):
         }
 
 
-
 class Hints(db.Model):
     """Hints can be bought with points and give clues as to how a flag can be obtained"""
 
@@ -294,6 +293,38 @@ class Solved(db.Model):
     username = Column(Text, primary_key=True, nullable=False)
 
     flag = relationship('Flags')
+
+    def __init__(self, flag_id: int, username: str):
+        """
+        Initializes a Solved relationship
+
+        :param flag_id: The ID of the flag that's been solved
+        :param username: The username of the person who solved the flag
+        """
+        self.flag_id = flag_id
+        self.username = username
+
+    @classmethod
+    def create(cls, flag_id: int, username: str):
+        """
+        Immediately creates a Solved relationship and commits it to the database
+
+        :param flag_id: The ID of the flag that's been solved
+        :param username: The username of the person who solved the flag
+        """
+        new_solved = Solved(flag_id, username)
+        db.session.add(new_solved)
+        db.session.commit()
+        return new_solved.to_dict()
+
+    def to_dict(self) -> dict:
+        """
+        :return: JSON serializable representation of a Solved relationship
+        """
+        return {
+            'flag_id': self.flag_id,
+            'username': self.username
+        }
 
 
 class UsedHints(db.Model):
