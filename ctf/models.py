@@ -186,6 +186,30 @@ class ChallengeTags(db.Model):
 
     challenge = relationship('Challenges')
 
+    def __init__(self, challenge_id: int, tag: str):
+        """
+        Initializes a ChallengeTag
+        """
+        self.challenge_id = challenge_id
+        self.tag = tag
+
+    @classmethod
+    def create(cls, challenge_id: int, tag: str) -> dict:
+        """
+        Immediately commits new ChallengeTag to the database
+        """
+        new_tag = ChallengeTags(challenge_id, tag)
+        db.session.add(new_tag)
+        db.session.commit()
+        return new_tag.to_dict()
+
+    def delete(self):
+        """
+        Deletes this instance of ChallengeTag from the database
+        """
+        db.session.delete(self)
+        db.session.commit()
+
     def to_dict(self) -> dict:
         """
         :return: JSON serializable representation of a Challenge

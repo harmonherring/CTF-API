@@ -58,8 +58,8 @@ def all_challenges():
         if not submitter:
             return jsonify({
                 'status': "error",
-                'message': "Your session doesn't include the 'preferred_username' value"
-            }), 400
+                'message': "Your session doesn't have the 'preferred_username' value"
+            }), 401
         new_challenge = Challenges.create(data['title'], data['description'], data['author'],
                                           submitter, difficulty, category)
         return jsonify(new_challenge), 201
@@ -86,6 +86,11 @@ def single_challenge(challenge_id: int):
     elif request.method == 'DELETE':
         # Check to ensure that the deleter is an admin or the person who created the challenge
         current_username = session['userinfo'].get('preferred_username')
+        if not current_username:
+            return jsonify({
+                'status': "error",
+                'message': "Your session doesn't have the 'preferred_username' value"
+            }), 401
         challenge = Challenges.query.filter_by(id=challenge_id).first()
         if not challenge:
             return jsonify({
