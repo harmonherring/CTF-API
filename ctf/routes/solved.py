@@ -6,7 +6,7 @@ These API routes are poorly named. They keep a record of who has solved which fl
 from flask import Blueprint, jsonify, request
 
 from ctf import auth
-from ctf.models import Solved, Flags
+from ctf.models import Solved, Flag
 
 solved_bp = Blueprint('solved', __name__)
 
@@ -19,7 +19,7 @@ def solved_flags(flag_id: int):
 
     :GET: Get a list of the users who have solved this flag
     """
-    if not Flags.query.filter_by(id=flag_id).first():
+    if not Flag.query.filter_by(id=flag_id).first():
         return jsonify({
             'status': "error",
             'message': "Flag doesn't exist"

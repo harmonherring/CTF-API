@@ -6,7 +6,7 @@ Contains the API routes pertaining to the available challenge difficulties
 from flask import Blueprint, request, jsonify
 
 from ctf import auth
-from ctf.models import Difficulties
+from ctf.models import Difficulty
 from ctf.utils import run_checks
 
 difficulties_bp = Blueprint("difficulties", __name__)
@@ -22,19 +22,19 @@ def all_difficulties():
     :POST: Takes 'name' value from application/json body and creates a Difficulty
     """
     if request.method == 'GET':
-        return jsonify([difficulty.to_dict()['name'] for difficulty in Difficulties.query.all()]),\
+        return jsonify([difficulty.to_dict()['name'] for difficulty in Difficulty.query.all()]),\
                200
     elif request.method == 'POST':
         checker = run_checks(is_authorized=None, has_json_args=["name"])
         if checker is not None:
             return jsonify(checker[0]), checker[1]
         data = request.get_json()
-        if Difficulties.query.filter_by(name=data['name']).first():
+        if Difficulty.query.filter_by(name=data['name']).first():
             return jsonify({
                 'status': "error",
                 'message': "Difficulty already exists"
             }), 409
-        new_difficulty = Difficulties.create(data['name'])
+        new_difficulty = Difficulty.create(data['name'])
         return jsonify(new_difficulty), 201
 
 
@@ -50,7 +50,7 @@ def single_difficulty(difficulty_name: str):
         checker = run_checks(is_authorized=None)
         if checker is not None:
             return jsonify(checker[0]), checker[1]
-        difficulty = Difficulties.query.filter_by(name=difficulty_name).first()
+        difficulty = Difficulty.query.filter_by(name=difficulty_name).first()
         if not difficulty:
             return jsonify({
                 'status': "error",

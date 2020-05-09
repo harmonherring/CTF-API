@@ -6,7 +6,7 @@ Contains the routes pertaining to the retrieval, creation, and removal of challe
 from flask import Blueprint, request, jsonify, session
 
 from ctf import auth
-from ctf.models import Challenges, Difficulties, Categories
+from ctf.models import Challenge, Difficulty, Category
 from ctf.utils import run_checks
 
 challenges_bp = Blueprint('challenges', __name__)
@@ -31,7 +31,7 @@ def all_challenges():
         if request.args.get('offset'):
             offset = int(request.args['offset'])
         return jsonify([
-            challenge.to_dict() for challenge in Challenges.query.paginate(offset, limit).items
+            challenge.to_dict() for challenge in Challenge.query.paginate(offset, limit).items
         ]), 200
     elif request.method == 'POST':
         checker = run_checks(has_json_args=["title", "description", "author", "difficulty",
@@ -40,16 +40,16 @@ def all_challenges():
             return jsonify(checker[0]), checker[1]
 
         data = request.get_json()
-        category = Categories.query.filter_by(name=data['category'].lower()).first()
-        difficulty = Difficulties.query.filter_by(name=data['difficulty'].lower()).first()
+        category = Category.query.filter_by(name=data['category'].lower()).first()
+        difficulty = Difficulty.query.filter_by(name=data['difficulty'].lower()).first()
         if not (category and difficulty):
             return jsonify({
                 'status': "error",
                 'message': "Nonexistent category or difficulty"
             }), 422
         submitter = session['userinfo'].get('preferred_username')
-        new_challenge = Challenges.create(data['title'], data['description'], data['author'],
-                                          submitter, difficulty, category)
+        new_challenge = Challenge.create(data['title'], data['description'], data['author'],
+                                         submitter, difficulty, category)
         return jsonify(new_challenge), 201
 
 
@@ -63,7 +63,7 @@ def single_challenge(challenge_id: int):
     :DELETE: Delete the challenge identified by 'challenge_id'
     """
     if request.method == 'GET':
-        challenge = Challenges.query.filter_by(id=challenge_id).first()
+        challenge = Challenge.query.filter_by(id=challenge_id).first()
         if challenge:
             return jsonify(challenge.to_dict()), 200
         else:
@@ -72,7 +72,7 @@ def single_challenge(challenge_id: int):
                 'message': "Challenge doesn't exist"
             }), 404
     elif request.method == 'DELETE':
-        challenge = Challenges.query.filter_by(id=challenge_id).first()
+        challenge = Challenge.query.filter_by(id=challenge_id).first()
         if not challenge:
             return jsonify({
                 'status': "error",

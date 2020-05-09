@@ -9,7 +9,7 @@ from sqlalchemy.orm import relationship
 from ctf import db
 
 
-class Categories(db.Model):
+class Category(db.Model):
     """A Category describes the type of Challenge. Challenges may have one Category."""
 
     __tablename__ = 'categories'
@@ -36,7 +36,7 @@ class Categories(db.Model):
         :param description: Description of the category
         :return: Dictionary representation of a Category
         """
-        new_category = Categories(name, description)
+        new_category = Category(name, description)
         db.session.add(new_category)
         db.session.commit()
         return new_category.to_dict()
@@ -58,7 +58,7 @@ class Categories(db.Model):
         db.session.commit()
 
 
-class Difficulties(db.Model):
+class Difficulty(db.Model):
     """Describes how difficult a Challenge is. Challenges may have one Difficulty."""
 
     __tablename__ = 'difficulties'
@@ -76,7 +76,7 @@ class Difficulties(db.Model):
         """
         Wrapper to immediately put new Difficulty into database
         """
-        new_difficulty = Difficulties(name)
+        new_difficulty = Difficulty(name)
         db.session.add(new_difficulty)
         db.session.commit()
         return new_difficulty.to_dict()
@@ -97,7 +97,7 @@ class Difficulties(db.Model):
         db.session.commit()
 
 
-class Challenges(db.Model):
+class Challenge(db.Model):
     """Challenges have a brief description, and then flags to be obtained!"""
 
     __tablename__ = 'challenges'
@@ -110,10 +110,10 @@ class Challenges(db.Model):
     author = Column(Text, nullable=False)
     submitter = Column(Text, nullable=False)
 
-    tags = db.relationship('ChallengeTags', backref='challenges')
-    category = relationship('Categories')
-    difficulty = relationship('Difficulties')
-    flags = db.relationship('Flags', backref='challenges')
+    tags = db.relationship('ChallengeTag', backref='challenges')
+    category = relationship('Category')
+    difficulty = relationship('Difficulty')
+    flags = db.relationship('Flag', backref='challenges')
 
     def __init__(self, title: str, description: str, author: str,
                  submitter: str, difficulty: str, category: str):
@@ -147,7 +147,7 @@ class Challenges(db.Model):
         :param category: Text description of the category. Must exist in Categories table.
         :return: The new Challenge
         """
-        new_challenge = Challenges(title, description, author, submitter, difficulty, category)
+        new_challenge = Challenge(title, description, author, submitter, difficulty, category)
         db.session.add(new_challenge)
         db.session.commit()
         return new_challenge.to_dict()
@@ -175,7 +175,7 @@ class Challenges(db.Model):
         db.session.commit()
 
 
-class ChallengeTags(db.Model):
+class ChallengeTag(db.Model):
     """Tags can describe aspects of a Challenge"""
 
     __tablename__ = 'challenge_tags'
@@ -184,7 +184,7 @@ class ChallengeTags(db.Model):
                           primary_key=True, nullable=False, index=True)
     tag = Column(Text, primary_key=True, nullable=False)
 
-    challenge = relationship('Challenges')
+    challenge = relationship('Challenge')
 
     def __init__(self, challenge_id: int, tag: str):
         """
@@ -198,7 +198,7 @@ class ChallengeTags(db.Model):
         """
         Immediately commits new ChallengeTag to the database
         """
-        new_tag = ChallengeTags(challenge_id, tag)
+        new_tag = ChallengeTag(challenge_id, tag)
         db.session.add(new_tag)
         db.session.commit()
         return new_tag.to_dict()
@@ -220,7 +220,7 @@ class ChallengeTags(db.Model):
         }
 
 
-class Flags(db.Model):
+class Flag(db.Model):
     """Flags are the objectives of a Challenge. Each has a point value and belongs to a Challenge"""
 
     __tablename__ = 'flags'
@@ -230,7 +230,7 @@ class Flags(db.Model):
     flag = Column(Text, nullable=False)
     challenge_id = Column(ForeignKey('challenges.id'), nullable=False, index=True)
 
-    challenge = relationship('Challenges')
+    challenge = relationship('Challenge')
 
     def __init__(self, point_value: int, flag: str, challenge_id: int):
         """
@@ -253,7 +253,7 @@ class Flags(db.Model):
         :param flag: The flag's data, to be solved by the user
         :param challenge_id: The ID this flag corresponds to
         """
-        new_flag = Flags(point_value, flag, challenge_id)
+        new_flag = Flag(point_value, flag, challenge_id)
         db.session.add(new_flag)
         db.session.commit()
         return new_flag.to_dict()
@@ -271,7 +271,7 @@ class Flags(db.Model):
         }
 
 
-class Hints(db.Model):
+class Hint(db.Model):
     """Hints can be bought with points and give clues as to how a flag can be obtained"""
 
     __tablename__ = 'hints'
@@ -281,7 +281,7 @@ class Hints(db.Model):
     hint = Column(Text, nullable=False)
     flag_id = Column(ForeignKey('flags.id'), nullable=False, index=True)
 
-    flag = relationship('Flags')
+    flag = relationship('Flag')
 
 
 class Solved(db.Model):
@@ -292,7 +292,7 @@ class Solved(db.Model):
     flag_id = Column(ForeignKey('flags.id'), primary_key=True, nullable=False, index=True)
     username = Column(Text, primary_key=True, nullable=False)
 
-    flag = relationship('Flags')
+    flag = relationship('Flag')
 
     def __init__(self, flag_id: int, username: str):
         """
@@ -327,7 +327,7 @@ class Solved(db.Model):
         }
 
 
-class UsedHints(db.Model):
+class UsedHint(db.Model):
     """Contains a list of which users have purchased which keys"""
 
     __tablename__ = 'used_hints'
@@ -335,4 +335,4 @@ class UsedHints(db.Model):
     hint_id = Column(ForeignKey('hints.id'), primary_key=True, nullable=False, index=True)
     username = Column(Text, primary_key=True, nullable=False)
 
-    hint = relationship('Hints')
+    hint = relationship('Hint')
