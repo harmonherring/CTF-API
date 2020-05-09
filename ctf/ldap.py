@@ -58,5 +58,6 @@ def is_ctf_admin(username: str) -> bool:
     Checks to see if the authenticated user can perform administrative actions.
     This should be the creator, long-term contributors, and RTPs.
     """
-    allowed_persons = ['harmon']
-    return username in allowed_persons or _ldap_is_member_of_group(ldap_get_member(username), "rtp")
+    allowed_usernames = ['harmon']
+    return username in allowed_usernames or \
+        _ldap_is_member_of_group(ldap_get_member(username), "rtp")

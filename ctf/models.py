@@ -103,8 +103,8 @@ class Challenges(db.Model):
     __tablename__ = 'challenges'
 
     id = Column(Integer, primary_key=True)
-    difficulty_name = Column(Text, ForeignKey('difficulties.name'), nullable=False, index=True)
-    category_name = Column(Text, ForeignKey('categories.name'), nullable=False, index=True)
+    difficulty_name = Column(ForeignKey('difficulties.name'), nullable=False, index=True)
+    category_name = Column(ForeignKey('categories.name'), nullable=False, index=True)
     title = Column(Text, nullable=False)
     description = Column(Text, nullable=False)
     author = Column(Text, nullable=False)
@@ -115,7 +115,8 @@ class Challenges(db.Model):
     difficulty = relationship('Difficulties')
     flags = db.relationship('Flags', backref='challenges')
 
-    def __init__(self, difficulty: str, category: str, title: str, description: str):
+    def __init__(self, title: str, description: str, author: str,
+                 submitter: str, difficulty: str, category: str):
         """
         Creates a Challenge
 
@@ -124,23 +125,29 @@ class Challenges(db.Model):
         :param title: Title of the Challenge
         :param description: Description of the Challenge
         """
-        self.difficulty = difficulty
-        self.category = category
         self.title = title
         self.description = description
+        self.author = author
+        self.submitter = submitter
+        self.difficulty = difficulty
+        self.category = category
 
     @classmethod
-    def create(cls, difficulty: str, category: str, title: str, description: str) -> dict:
+    def create(cls, title: str, description: str, author: str, submitter: str, difficulty: str,
+               category: str) -> dict:
         """
         Wraps some flask-sqlalchemy functions to immediately commit new Challenge to the database
 
-        :param difficulty: Text description of the difficulty. Must exist in Difficulties table.
-        :param category: Text description of the category. Must exist in Categories table.
+
         :param title: Title of the Challenge
         :param description: Description of the Challenge
+        :param author: The person who created this challenge
+        :param submitter: The account that submitted this challenge
+        :param difficulty: Text description of the difficulty. Must exist in Difficulties table.
+        :param category: Text description of the category. Must exist in Categories table.
         :return: The new Challenge
         """
-        new_challenge = Challenges(difficulty, category, title, description)
+        new_challenge = Challenges(title, description, author, submitter, difficulty, category)
         db.session.add(new_challenge)
         db.session.commit()
         return new_challenge.to_dict()
@@ -156,7 +163,16 @@ class Challenges(db.Model):
             'title': self.title,
             'description': self.description,
             'tags': [tag.to_dict()['tag'] for tag in self.tags],
+            'author': self.author,
+            'submitter': self.submitter
         }
+
+    def delete(self):
+        """
+        Deletes this challenge from the database
+        """
+        db.session.delete(self)
+        db.session.commit()
 
 
 class ChallengeTags(db.Model):

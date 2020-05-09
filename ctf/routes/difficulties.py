@@ -24,7 +24,7 @@ def all_difficulties():
     if request.method == 'GET':
         return jsonify([difficulty.to_dict()['name'] for difficulty in Difficulties.query.all()]),\
                200
-    if request.method == 'POST':
+    elif request.method == 'POST':
         if not is_ctf_admin(session['userinfo'].get('preferred_username')):
             return jsonify({
                 'status': "error",

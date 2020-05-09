@@ -21,8 +21,9 @@ auth = OIDCAuthentication(
 _ldap = csh_ldap.CSHLDAP(app.config["LDAP_DN"], app.config["LDAP_PW"])
 
 # pylint: disable=wrong-import-position
-from ctf.routes import categories, difficulties
+from ctf.routes import categories, difficulties, challenges
 # pylint: enable=wrong-import-position
 
 app.register_blueprint(categories, url_prefix='/categories')
 app.register_blueprint(difficulties, url_prefix='/difficulties')
+app.register_blueprint(challenges, url_prefix='/challenges')
