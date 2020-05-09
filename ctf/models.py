@@ -107,6 +107,8 @@ class Challenges(db.Model):
     category_name = Column(Text, ForeignKey('categories.name'), nullable=False, index=True)
     title = Column(Text, nullable=False)
     description = Column(Text, nullable=False)
+    author = Column(Text, nullable=False)
+    submitter = Column(Text, nullable=False)
 
     tags = db.relationship('ChallengeTags', backref='challenges')
     category = relationship('Categories')
