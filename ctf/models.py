@@ -65,6 +65,37 @@ class Difficulties(db.Model):
 
     name = Column(Text, primary_key=True)
 
+    def __init__(self, name: str):
+        """
+        Initializes a Difficulty
+        """
+        self.name = name
+
+    @classmethod
+    def create(cls, name: str) -> dict:
+        """
+        Wrapper to immediately put new Difficulty into database
+        """
+        new_difficulty = Difficulties(name)
+        db.session.add(new_difficulty)
+        db.session.commit()
+        return new_difficulty.to_dict()
+
+    def to_dict(self) -> dict:
+        """
+        :return: JSON serializable representation of a Difficulty
+        """
+        return {
+            'name': self.name
+        }
+
+    def delete(self):
+        """
+        Deletes this Difficulty from the database
+        """
+        db.session.delete(self)
+        db.session.commit()
+
 
 class Challenges(db.Model):
     """Challenges have a brief description, and then flags to be obtained!"""

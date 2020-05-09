@@ -8,7 +8,7 @@ from ctf import auth
 from ctf.models import Categories
 from ctf.ldap import is_ctf_admin
 
-categories_bp = Blueprint('categories_bp', __name__)
+categories_bp = Blueprint('categories', __name__)
 
 
 @categories_bp.route('/', methods=['GET', 'POST'])
