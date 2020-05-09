@@ -7,7 +7,7 @@ from flask import Blueprint, request, jsonify, session
 
 from ctf import auth
 from ctf.models import Challenge, Difficulty, Category
-from ctf.utils import run_checks
+from ctf.utils import TSAPreCheck
 
 challenges_bp = Blueprint('challenges', __name__)
 
@@ -34,19 +34,19 @@ def all_challenges():
             challenge.to_dict() for challenge in Challenge.query.paginate(offset, limit).items
         ]), 200
     elif request.method == 'POST':
-        checker = run_checks(has_json_args=["title", "description", "author", "difficulty",
-                                            "category"])
-        if checker is not None:
-            return jsonify(checker[0]), checker[1]
+        precheck = TSAPreCheck().has_json_args("title", "description", "author", "difficulty",
+                                               "category")
+        if precheck.error_code:
+            return jsonify(precheck.message), precheck.error_code
 
         data = request.get_json()
         category = Category.query.filter_by(name=data['category'].lower()).first()
         difficulty = Difficulty.query.filter_by(name=data['difficulty'].lower()).first()
-        if not (category and difficulty):
-            return jsonify({
-                'status': "error",
-                'message': "Nonexistent category or difficulty"
-            }), 422
+
+        precheck.ensure_existence((category, Category), (difficulty, Difficulty))
+        if precheck.error_code:
+            return jsonify(precheck.message), precheck.error_code
+
         submitter = session['userinfo'].get('preferred_username')
         new_challenge = Challenge.create(data['title'], data['description'], data['author'],
                                          submitter, difficulty, category)
@@ -64,22 +64,15 @@ def single_challenge(challenge_id: int):
     """
     if request.method == 'GET':
         challenge = Challenge.query.filter_by(id=challenge_id).first()
-        if challenge:
-            return jsonify(challenge.to_dict()), 200
-        else:
-            return jsonify({
-                'status': "error",
-                'message': "Challenge doesn't exist"
-            }), 404
+        precheck = TSAPreCheck().ensure_existence((challenge, Challenge))
+        if precheck.error_code:
+            return jsonify(precheck.message), precheck.error_code
+        return jsonify(challenge.to_dict()), 200
     elif request.method == 'DELETE':
         challenge = Challenge.query.filter_by(id=challenge_id).first()
-        if not challenge:
-            return jsonify({
-                'status': "error",
-                'message': "Challenge doesn't exist"
-            }), 404
-        checker = run_checks(is_authorized=challenge.submitter)
-        if checker is not None:
-            return jsonify(checker[0]), checker[1]
+        precheck = TSAPreCheck().ensure_existence((challenge, Challenge)).is_authorized(
+            challenge.submitter if challenge is not None else None)
+        if precheck.error_code:
+            return jsonify(precheck.message), precheck.error_code
         challenge.delete()
         return '', 204
