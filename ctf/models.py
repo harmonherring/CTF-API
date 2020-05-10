@@ -398,7 +398,7 @@ class UsedHint(db.Model):
         self.username = username
 
     @classmethod
-    def create(cls, hint_id: int, username: str) -> dict:
+    def create(cls, hint_id: int, username: str):
         """
         Creates and immediately inserts UsedHint into database
 
@@ -408,7 +408,7 @@ class UsedHint(db.Model):
         new_used_hint = UsedHint(hint_id, username)
         db.session.add(new_used_hint)
         db.session.commit()
-        return new_used_hint.to_dict()
+        return new_used_hint
 
     def to_dict(self) -> dict:
         """
