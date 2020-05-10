@@ -12,8 +12,10 @@ from ctf.utils import TSAPreCheck
 used_hints_bp = Blueprint('used_hints', __name__)
 
 
-@used_hints_bp.route('/<int:challenge_id>/flags/<int:flag_id>/hints/<int:hint_id>/used', methods=[
-    'POST'])
+@used_hints_bp.route('/challenges/<int:challenge_id>/flags/<int:flag_id>/hints/<int:hint_id>/used',
+                     methods=['POST'])
+@used_hints_bp.route('/flags/<int:flag_id>/hints/<int:hint_id>/used', methods=['POST'])
+@used_hints_bp.route('/hints/<int:hint_id>/used', methods=['POST'])
 @auth.oidc_auth
 def all_used_hints(challenge_id: int, flag_id: int, hint_id: int):
     # pylint: disable=unused-argument

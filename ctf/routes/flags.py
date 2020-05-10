@@ -12,7 +12,7 @@ from ctf.utils import TSAPreCheck, delete_flag
 flags_bp = Blueprint('flags', __name__)
 
 
-@flags_bp.route('/<int:challenge_id>/flags', methods=['GET', 'POST'])
+@flags_bp.route('/challenges/<int:challenge_id>/flags', methods=['GET', 'POST'])
 @auth.oidc_auth
 def all_flags(challenge_id: int):
     """
@@ -52,17 +52,18 @@ def all_flags(challenge_id: int):
 
 
 @flags_bp.route('/<int:challenge_id>/flags/<int:flag_id>', methods=['DELETE'])
+@flags_bp.route('/flags/<int:flag_id>', methods=['DELETE'])
 @auth.oidc_auth
 def single_flag(challenge_id: int, flag_id: int):
+    # pylint: disable=unused-argument
     """
     Operations pertaining to a single flag
 
     :DELETE: Deletes the specified flag
     """
-    challenge = Challenge.query.filter_by(id=challenge_id).first()
     flag = Flag.query.filter_by(id=flag_id).first()
-    precheck = TSAPreCheck().ensure_existence((challenge, Challenge), (flag, Flag))\
-        .is_authorized(challenge.submitter if challenge else None)
+    precheck = TSAPreCheck().ensure_existence((flag, Flag))\
+        .is_authorized(flag.challenge.submitter if flag else None)
     if precheck.error_code:
         return jsonify(precheck.message), precheck.error_code
 

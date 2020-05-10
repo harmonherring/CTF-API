@@ -12,7 +12,8 @@ from ctf.utils import TSAPreCheck, delete_hint
 hints_bp = Blueprint('hints', __name__)
 
 
-@hints_bp.route('/<int:challenge_id>/flags/<int:flag_id>/hints', methods=['GET', 'POST'])
+@hints_bp.route('/challenges/<int:challenge_id>/flags/<int:flag_id>/hints', methods=['GET', 'POST'])
+@hints_bp.route('/flags/<int:flag_id>/hints', methods=['GET', 'POST'])
 @auth.oidc_auth
 def all_hints(challenge_id: int, flag_id: int):
     # pylint: disable=unused-argument
@@ -48,7 +49,10 @@ def all_hints(challenge_id: int, flag_id: int):
         return jsonify(new_hint), 201
 
 
-@hints_bp.route('/<int:challenge_id>/flags/<int:flag_id>/hints/<int:hint_id>', methods=['DELETE'])
+@hints_bp.route('/challenges/<int:challenge_id>/flags/<int:flag_id>/hints/<int:hint_id>',
+                methods=['DELETE'])
+@hints_bp.route('/flags/<int:flag_id>/hints/<int:hint_id>', methods=['DELETE'])
+@hints_bp.route('/hints/<int:hint_id>', methods=['DELETE'])
 @auth.oidc_auth
 def one_hint(challenge_id: int, flag_id: int, hint_id: int):
     # pylint: disable=unused-argument
