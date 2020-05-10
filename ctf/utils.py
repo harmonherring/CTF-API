@@ -9,7 +9,7 @@ from flask_sqlalchemy import Model
 
 from ctf import db
 from ctf.ldap import is_ctf_admin
-from ctf.models import UsedHint, Hint, Solved, Flag
+from ctf.models import UsedHint, Hint, Solved, Flag, ChallengeTag
 
 
 class TSAPreCheck:
@@ -207,3 +207,14 @@ def delete_flag(flag_id: int):
         delete_solved(flag.id)
         delete_hints(flag.id)
         flag.delete()
+
+
+def delete_challenge_tags(challenge_id: int):
+    """
+    Deletes all challenge tags with 'challenge_id'
+
+    :param challenge_id: Tags with this challenge_id will be deleted
+    """
+    for tag in ChallengeTag.query.filter_by(challenge_id=challenge_id).all():
+        db.session.delete(tag)
+    db.session.commit()
