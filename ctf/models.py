@@ -333,6 +333,13 @@ class Solved(db.Model):
             'username': self.username
         }
 
+    def delete(self):
+        """
+        Deletes this instance of a Solved relationship and commits that to the database
+        """
+        db.session.delete(self)
+        db.session.commit()
+
 
 class UsedHint(db.Model):
     """Contains a list of which users have purchased which keys"""

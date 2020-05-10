@@ -5,7 +5,7 @@ Contains routes pertaining to the retrieval and creation of flags
 
 from flask import Blueprint, request, jsonify
 
-from ctf import auth
+from ctf import auth, db
 from ctf.models import Flag, Challenge, Solved
 from ctf.utils import TSAPreCheck
 
@@ -67,5 +67,10 @@ def single_flag(challenge_id: int, flag_id: int):
         return jsonify(precheck.message), precheck.error_code
 
     if request.method == 'DELETE':
+        solutions = Solved.query.filter_by(flag_id=flag_id).all()
+        for solution in solutions:
+            db.session.delete(solution)
+        db.session.commit()
+        # TODO: Delete hints and used hints
         flag.delete()
         return '', 204

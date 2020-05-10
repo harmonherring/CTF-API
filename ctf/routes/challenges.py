@@ -69,6 +69,7 @@ def single_challenge(challenge_id: int):
             return jsonify(precheck.message), precheck.error_code
         return jsonify(challenge.to_dict()), 200
     elif request.method == 'DELETE':
+        # TODO: Delete challenge_tags, flags, solved flags, hints, and used hints
         challenge = Challenge.query.filter_by(id=challenge_id).first()
         precheck = TSAPreCheck().ensure_existence((challenge, Challenge)).is_authorized(
             challenge.submitter if challenge is not None else None)
