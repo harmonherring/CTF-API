@@ -290,12 +290,41 @@ class Hint(db.Model):
 
     flag = relationship('Flag')
 
+    def __init__(self, cost: int, hint: str, flag_id: int):
+        """
+        Initializes a hint
+        """
+        self.cost = cost
+        self.hint = hint
+        self.flag_id = flag_id
+
+    @classmethod
+    def create(cls, cost: int, hint: str, flag_id: int) -> dict:
+        """
+        Create new hint and immediately commit it to the database
+        """
+        new_hint = Hint(cost, hint, flag_id)
+        db.session.add(new_hint)
+        db.session.commit()
+        return new_hint.to_dict()
+
     def delete(self):
         """
         Removes this instance of hint from the database
         """
         db.session.delete(self)
         db.session.commit()
+
+    def to_dict(self) -> dict:
+        """
+        :return: A JSON serializable representation of a hint
+        """
+        return {
+            'id': self.id,
+            'cost': self.cost,
+            'hint': self.hint,
+            'flag_id': self.flag_id
+        }
 
 
 class Solved(db.Model):
@@ -357,3 +386,35 @@ class UsedHint(db.Model):
     username = Column(Text, primary_key=True, nullable=False)
 
     hint = relationship('Hint')
+
+    def __init__(self, hint_id: int, username: str):
+        """
+        Initializes a new used hint relation
+
+        :param hint_id: ID of hint that this relation belongs to
+        :param username: The username of the person who purchased the hint
+        """
+        self.hint_id = hint_id
+        self.username = username
+
+    @classmethod
+    def create(cls, hint_id: int, username: str) -> dict:
+        """
+        Creates and immediately inserts UsedHint into database
+
+        :param hint_id: ID of hint that this relation belongs to
+        :param username: The username of the person who purchased the hint
+        """
+        new_used_hint = UsedHint(hint_id, username)
+        db.session.add(new_used_hint)
+        db.session.commit()
+        return new_used_hint.to_dict()
+
+    def to_dict(self) -> dict:
+        """
+        :return: A JSON serializable representation of a UsedHint
+        """
+        return {
+            'hint_id': self.hint_id,
+            'username': self.username
+        }

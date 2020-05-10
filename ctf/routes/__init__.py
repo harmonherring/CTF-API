@@ -9,3 +9,4 @@ from .challenges import challenges_bp as challenges
 from .tags import tags_bp as tags
 from .solved import solved_bp as solved
 from .flags import flags_bp as flags
+from .hints import hints_bp as hints
