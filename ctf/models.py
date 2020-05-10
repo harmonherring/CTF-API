@@ -231,6 +231,7 @@ class Flag(db.Model):
     challenge_id = Column(ForeignKey('challenges.id'), nullable=False, index=True)
 
     challenge = relationship('Challenge')
+    hints = relationship('Hint')
 
     def __init__(self, point_value: int, flag: str, challenge_id: int):
         """

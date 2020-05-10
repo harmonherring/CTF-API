@@ -54,7 +54,7 @@ def all_flags(challenge_id: int):
 @flags_bp.route('/<int:challenge_id>/flags/<int:flag_id>', methods=['DELETE'])
 @flags_bp.route('/flags/<int:flag_id>', methods=['DELETE'])
 @auth.oidc_auth
-def single_flag(challenge_id: int, flag_id: int):
+def single_flag(challenge_id: int = 0, flag_id: int = 0):
     # pylint: disable=unused-argument
     """
     Operations pertaining to a single flag

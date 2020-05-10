@@ -54,7 +54,7 @@ def all_hints(challenge_id: int, flag_id: int):
 @hints_bp.route('/flags/<int:flag_id>/hints/<int:hint_id>', methods=['DELETE'])
 @hints_bp.route('/hints/<int:hint_id>', methods=['DELETE'])
 @auth.oidc_auth
-def one_hint(challenge_id: int, flag_id: int, hint_id: int):
+def one_hint(challenge_id: int = 0, flag_id: int = 0, hint_id: int = 0):
     # pylint: disable=unused-argument
     """
     Operations pertaining to one hint

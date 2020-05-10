@@ -17,10 +17,12 @@ used_hints_bp = Blueprint('used_hints', __name__)
 @used_hints_bp.route('/flags/<int:flag_id>/hints/<int:hint_id>/used', methods=['POST'])
 @used_hints_bp.route('/hints/<int:hint_id>/used', methods=['POST'])
 @auth.oidc_auth
-def all_used_hints(challenge_id: int, flag_id: int, hint_id: int):
+def all_used_hints(challenge_id: int = 0, flag_id: int = 0, hint_id: int = 0):
     # pylint: disable=unused-argument
     """
     Operations relating to used hints
+
+    Good lord I can't believe Flask let me do this with the parameters
 
     :POST: Allow a user to pay for a hint
     """

@@ -7,7 +7,7 @@ from flask import Blueprint, request, jsonify, session
 
 from ctf import auth
 from ctf.models import Challenge, Difficulty, Category
-from ctf.utils import TSAPreCheck, delete_flags, delete_challenge_tags
+from ctf.utils import TSAPreCheck, delete_flags, delete_challenge_tags, get_all_challenge_data
 
 challenges_bp = Blueprint('challenges', __name__)
 
@@ -30,8 +30,13 @@ def all_challenges():
             limit = int(request.args['limit'])
         if request.args.get('offset'):
             offset = int(request.args['offset'])
+        precheck = TSAPreCheck()
+        current_user = precheck.get_current_user()
+        if precheck.error_code:
+            return jsonify(precheck.message), precheck.error_code
         return jsonify([
-            challenge.to_dict() for challenge in Challenge.query.paginate(offset, limit).items
+            get_all_challenge_data(challenge.id, current_user) for challenge in
+            Challenge.query.paginate(offset, limit).items
         ]), 200
     elif request.method == 'POST':
         precheck = TSAPreCheck().has_json_args("title", "description", "author", "difficulty",
@@ -65,9 +70,10 @@ def single_challenge(challenge_id: int):
     if request.method == 'GET':
         challenge = Challenge.query.filter_by(id=challenge_id).first()
         precheck = TSAPreCheck().ensure_existence((challenge, Challenge))
+        current_user = precheck.get_current_user()
         if precheck.error_code:
             return jsonify(precheck.message), precheck.error_code
-        return jsonify(challenge.to_dict()), 200
+        return jsonify(get_all_challenge_data(challenge.id, current_user)), 200
     elif request.method == 'DELETE':
         challenge = Challenge.query.filter_by(id=challenge_id).first()
         precheck = TSAPreCheck().ensure_existence((challenge, Challenge)).is_authorized(

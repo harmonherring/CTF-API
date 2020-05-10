@@ -9,7 +9,7 @@ from flask_sqlalchemy import Model
 
 from ctf import db
 from ctf.ldap import is_ctf_admin
-from ctf.models import UsedHint, Hint, Solved, Flag, ChallengeTag
+from ctf.models import UsedHint, Hint, Solved, Flag, ChallengeTag, Challenge
 
 
 class TSAPreCheck:
@@ -218,3 +218,32 @@ def delete_challenge_tags(challenge_id: int):
     for tag in ChallengeTag.query.filter_by(challenge_id=challenge_id).all():
         db.session.delete(tag)
     db.session.commit()
+
+
+def get_all_challenge_data(challenge_id: int, current_user: str):
+    """
+    Gets Challenge data, associated flags, and the hints associated with those flags
+    """
+    # This is a yikes
+    challenge = Challenge.query.filter_by(id=challenge_id).first()
+    if not challenge:
+        return None
+    returnval = challenge.to_dict()
+    solved = [solved.flag_id for solved in Solved.query.filter_by(username=current_user).all()]
+    used = [
+        used_hint.hint_id for used_hint in UsedHint.query.filter_by(username=current_user).all()
+    ]
+    flags = challenge.flags
+    returnval['flags'] = [flag.to_dict() for flag in flags]
+    for flag in returnval['flags']:
+        del flag['challenge_id']
+        if flag['id'] not in solved:
+            del flag['flag']
+        hints = Hint.query.filter_by(flag_id=flag['id']).all()
+        flag['hints'] = [hint.to_dict() for hint in hints]
+        for hint in flag['hints']:
+            del hint['flag_id']
+            if hint['id'] not in used:
+                del hint['hint']
+
+    return returnval
