@@ -290,6 +290,13 @@ class Hint(db.Model):
 
     flag = relationship('Flag')
 
+    def delete(self):
+        """
+        Removes this instance of hint from the database
+        """
+        db.session.delete(self)
+        db.session.commit()
+
 
 class Solved(db.Model):
     """This table name is dumb. It contains a list of which users have solved which flags."""

@@ -7,7 +7,9 @@ from typing import Tuple, Any, Type, Union
 from flask import request, session
 from flask_sqlalchemy import Model
 
+from ctf import db
 from ctf.ldap import is_ctf_admin
+from ctf.models import UsedHint, Hint, Solved, Flag
 
 
 class TSAPreCheck:
@@ -135,3 +137,73 @@ class TSAPreCheck:
                        "session"
         }
         return None
+
+
+def delete_used_hints(hint_id: int):
+    """
+    Deletes the used hints identified by 'hint_id'
+
+    :param hint_id: The matching used hints should be deleted
+    """
+    for used_hint in UsedHint.query.filter_by(hint_id=hint_id).all():
+        db.session.delete(used_hint)
+    db.session.commit()
+
+
+def delete_hints(flag_id: int):
+    """
+    Deletes hints identified by 'flag_id'.
+
+    :param flag_id: The matching hints should be deleted
+    """
+    for hint in Hint.query.filter_by(flag_id=flag_id).all():
+        delete_used_hints(hint.id)
+        hint.delete()
+
+
+def delete_hint(hint_id: int):
+    """
+    Deletes a single hint and its used hints
+
+    :param hint_id: The id of the hint
+    """
+    delete_used_hints(hint_id)
+    hint = Hint.query.filter_by(id=hint_id).first()
+    if hint:
+        hint.delete()
+
+
+def delete_solved(flag_id: int):
+    """
+    Deletes solved relations identified by 'flag_id'
+
+    :param flag_id: The matching solved relations should be deleted
+    """
+    for solved in Solved.query.filter_by(flag_id=flag_id).all():
+        db.session.delete(solved)
+    db.session.commit()
+
+
+def delete_flags(challenge_id):
+    """
+    Removes the flags with matching 'challenge_id'
+
+    :param challenge_id: The matching flags should be deleted
+    """
+    for flag in Flag.query.filter_by(challenge_id=challenge_id).all():
+        delete_solved(flag.id)
+        delete_hints(flag.id)
+        flag.delete()
+
+
+def delete_flag(flag_id: int):
+    """
+    Deletes a single flag identified by flag_id
+
+    :param flag_id: Identifier of the flag to be deleted
+    """
+    flag = Flag.query.filter_by(id=flag_id).first()
+    if flag:
+        delete_solved(flag.id)
+        delete_hints(flag.id)
+        flag.delete()
