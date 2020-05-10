@@ -12,42 +12,41 @@ from ctf.utils import TSAPreCheck
 solved_bp = Blueprint('solved', __name__)
 
 
-@solved_bp.route('/<int:challenge_id>/flags/<int:flag_id>/solved', methods=['GET'])
+@solved_bp.route('/<int:challenge_id>/solved', methods=['GET'])
 @auth.oidc_auth
-def solved_flags(challenge_id: int, flag_id: int):
+def solved_flags(challenge_id: int):
     """
     Operations pertaining to the solution of flags
 
-    :GET: Get a list of the users who have solved this flag
+    :GET: Get a list of the users who have solved each flag belonging to the specified challenge
     """
-    flag = Flag.query.filter_by(id=flag_id).first()
     challenge = Challenge.query.filter_by(id=challenge_id).first()
-    precheck = TSAPreCheck().ensure_existence((challenge, Challenge), (flag, Flag))
+    precheck = TSAPreCheck().ensure_existence((challenge, Challenge))
     if precheck.error_code:
         return jsonify(precheck.message), precheck.error_code
 
+    flags = Flag.query.filter_by(challenge_id=challenge_id).all()
+    response = dict()
+
+    for flag in flags:
+        solved = Solved.query.filter_by(flag_id=flag.id).all()
+        response[flag.id] = [solution.username for solution in solved]
+
     if request.method == 'GET':
-        return jsonify([solved.to_dict()['username'] for solved in Solved.query.filter_by(
-            flag_id=flag_id).all()]), 200
+        return jsonify(response), 200
 
 
-@solved_bp.route('/<int:challenge_id>/flags/<int:flag_id>/solved', methods=['POST'])
+@solved_bp.route('/<int:challenge_id>/solved', methods=['POST'])
 @auth.oidc_auth
-def solve_flag(challenge_id: int, flag_id: int):
+def solve_flag(challenge_id: int):
     """
-    Operations pertaining to a single flag solution. This is primarily attempting a flag solution.
-    This is a bit wonky, because I'd like for someone to be able to hit the Challenge object with a
-    flag key and then have the API check all keys associated with that Challenge. It's 2am
-    though, and I can't find a way for that to fit in with the URL verbiage, so...the flag_id
-    key is pretty much just ignored.
+    Operations pertaining to the solved relations on a challenge (but really a flag).
 
     :param challenge_id: The challenge that a solution is being attempted on
-    :param flag_id: The flag that's being solved. This value is ignored
 
     :POST: Attempt solution of all flags associated with this challenge
     """
     challenge = Challenge.query.filter_by(id=challenge_id).first()
-    _flag = Flag.query.filter_by(id=flag_id).first()
     precheck = TSAPreCheck().ensure_existence((challenge, Challenge)).has_json_args("flag")
     if precheck.error_code:
         return jsonify(precheck.message), precheck.error_code
