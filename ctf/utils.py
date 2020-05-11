@@ -209,7 +209,7 @@ def delete_flag(flag_id: int):
         flag.delete()
 
 
-def delete_challenge_tags(challenge_id: int):
+def delete_challenge_tags(challenge_id: int) -> dict:
     """
     Deletes all challenge tags with 'challenge_id'
 
@@ -247,3 +247,19 @@ def get_all_challenge_data(challenge_id: int, current_user: str):
                 del hint['hint']
 
     return returnval
+
+
+def calculate_score(username: str) -> int:
+    """
+    Calculates the score for a user. Adds up points from solved challenges, subtracts points from
+    spent hints
+    """
+    solved = Solved.query.filter_by(username=username).all()
+    used_hints = UsedHint.query.filter_by(username=username).all()
+    total_score = 0
+    for solution in solved:
+        total_score += solution.flag.point_value
+    for hint in used_hints:
+        if hint.hint.flag.challenge.submitter != username:
+            total_score -= hint.hint.cost
+    return total_score
