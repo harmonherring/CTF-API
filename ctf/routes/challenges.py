@@ -4,6 +4,7 @@ Contains the routes pertaining to the retrieval, creation, and removal of challe
 """
 
 from flask import Blueprint, request, jsonify, session
+from sqlalchemy import desc
 
 from ctf import auth
 from ctf.models import Challenge, Difficulty, Category
@@ -36,7 +37,7 @@ def all_challenges():
             return jsonify(precheck.message), precheck.error_code
         return jsonify([
             get_all_challenge_data(challenge.id, current_user) for challenge in
-            Challenge.query.paginate(offset, limit).items
+            Challenge.query.order_by(desc(Challenge.id)).paginate(offset, limit).items
         ]), 200
     elif request.method == 'POST':
         precheck = TSAPreCheck().has_json_args("title", "description", "author", "difficulty",
