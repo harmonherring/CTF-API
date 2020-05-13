@@ -129,8 +129,8 @@ class TSAPreCheck:
                 'status': "error",
                 'message': "Your session doesn't have the 'preferred_username' value"
             }
-        if not ('rtp' in auth.get_user_roles(auth.current_user()) or 'ctf' in
-                auth.get_user_roles(auth.current_user()) or
+        if not ('rtp' in get_user_roles(auth.current_user()) or 'ctf' in
+                get_user_roles(auth.current_user()) or
                 current_user == user):
             self.error_code = 403
             self.message = {
