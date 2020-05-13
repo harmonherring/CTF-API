@@ -6,7 +6,6 @@ Loads blueprints to their respective routes.
 
 from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
-from flask_pyoidc.flask_pyoidc import OIDCAuthentication
 from flask_httpauth import HTTPTokenAuth
 from flask_cors import CORS
 import csh_ldap
@@ -18,7 +17,6 @@ app.config.from_object(config)
 CORS(app)
 db = SQLAlchemy(app)
 auth = HTTPTokenAuth(scheme='Bearer')
-_ldap = csh_ldap.CSHLDAP(app.config["LDAP_DN"], app.config["LDAP_PW"])
 
 # pylint: disable=wrong-import-position
 from ctf.routes import categories, difficulties, challenges, tags, solved, flags, hints, used_hints

@@ -19,16 +19,6 @@ OIDC_PUBLIC_KEY = \
     bytes(requests.get("https://sso.csh.rit.edu/auth/realms/csh").json()['public_key'], 'UTF-8') + \
     b"\n-----END PUBLIC KEY-----"
 OIDC_USERINFO_ENDPOINT = "https://sso.csh.rit.edu/auth/realms/csh/protocol/openid-connect/userinfo"
-OIDC_ISSUER = environ.get('CTF_OIDC_ISSUER', 'https://sso.csh.rit.edu/auth/realms/csh')
-OIDC_CLIENT_CONFIG = {
-    'client_id': environ.get('CTF_OIDC_CLIENT_ID', 'ctf'),
-    'client_secret': environ.get('CTF_OIDC_CLIENT_SECRET', ''),
-    'post_logout_redirect_uris': [environ.get('CTF_OIDC_LOGOUT_REDIRECT_URI', 'https://quotefault-api.csh.rit.edu/logout')]
-}
-
-# LDAP config
-LDAP_DN = environ.get('CTF_LDAP_DN', "")
-LDAP_PW = environ.get('CTF_LDAP_PW', "")
 
 # CORS config
 CORS_SUPPORTS_CREDENTIALS = True
