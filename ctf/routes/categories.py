@@ -6,7 +6,8 @@ from flask import Blueprint, jsonify, request
 
 from ctf import auth
 from ctf.models import Category
-from ctf.utils import TSAPreCheck
+from ctf.utils import has_json_args
+from ctf.constants import not_found, collision
 
 categories_bp = Blueprint('categories', __name__)
 
@@ -21,20 +22,17 @@ def get_all_categories():
 
 
 @categories_bp.route('', methods=['POST'])
-@auth.login_required
+@auth.login_required(role=['rtp', 'ctf'])
+@has_json_args("name", "description")
 def create_new_category():
     """
     Create a new category given parameters in application/json body
     """
-    precheck = TSAPreCheck().is_authorized(None).has_json_args("name", "description")
-    if precheck.error_code:
-        return jsonify(precheck.message), precheck.error_code
-
     data = request.get_json()
+
     check_existing_category = Category.query.filter_by(name=data['name']).first()
-    precheck.ensure_nonexistence((check_existing_category, Category))
-    if precheck.error_code:
-        return jsonify(precheck.message), precheck.error_code
+    if check_existing_category:
+        return collision()
 
     new_category = Category.create(data['name'].lower(), data['description'])
     return jsonify(new_category), 201
@@ -53,10 +51,7 @@ def get_category(category_name: str):
     """
     category = Category.query.filter_by(name=category_name).first()
     if not category:
-        return jsonify({
-            'status': "error",
-            'message': "Category doesn't exist"
-        }), 404
+        return not_found()
     return jsonify(category.to_dict()), 200
 
 
@@ -68,9 +63,6 @@ def delete_category(category_name: str):
     """
     category = Category.query.filter_by(name=category_name).first()
     if not category:
-        return jsonify({
-            'status': "error",
-            'message': "Category doesn't exist"
-        }), 404
+        return not_found()
     category.delete()
     return '', 204

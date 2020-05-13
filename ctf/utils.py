@@ -3,6 +3,7 @@
 Contains useful functions used across many parts of the API
 """
 from typing import Tuple, Any, Type, Union
+from functools import wraps
 
 import requests
 from flask import request, jsonify
@@ -88,6 +89,37 @@ def auth_error(status):
                 'message': "Access denied"
             }
         ), status
+
+
+def has_json_args(*json_args):
+    """
+    Checks if the request has Content-Type set to application/json and specified arguments
+    exist. Should only wrap a Flask route
+    :param args: The arguments to check for
+    :return: The Flask route if success, or jsonified error otherwise
+    """
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            if not request.is_json:
+                return jsonify({
+                    'status': "error",
+                    'message': "Your Content-Type must be application/json"
+                }), 415
+            data: dict = request.get_json()
+            missing = []
+            for arg in json_args:
+                if arg not in data.keys():
+                    missing.append(arg)
+            if missing:
+                return jsonify({
+                    'status': "error",
+                    'message': "Missing the following arguments in your application/json body: "
+                               + ', '.join([str(arg) for arg in missing])
+                }), 422
+            return func(*args, **kwargs)
+        return wrapper
+    return decorator
 
 
 class TSAPreCheck:

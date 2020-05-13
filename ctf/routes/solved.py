@@ -7,7 +7,8 @@ from flask import Blueprint, jsonify, request
 
 from ctf import auth
 from ctf.models import Solved, Flag, Challenge
-from ctf.utils import TSAPreCheck
+from ctf.utils import TSAPreCheck, has_json_args
+from ctf.constants import collision, not_found
 
 solved_bp = Blueprint('solved', __name__)
 
@@ -21,9 +22,8 @@ def solved_flags(challenge_id: int):
     :GET: Get a list of the users who have solved each flag belonging to the specified challenge
     """
     challenge = Challenge.query.filter_by(id=challenge_id).first()
-    precheck = TSAPreCheck().ensure_existence((challenge, Challenge))
-    if precheck.error_code:
-        return jsonify(precheck.message), precheck.error_code
+    if not challenge:
+        return not_found()
 
     flags = Flag.query.filter_by(challenge_id=challenge_id).all()
     response = dict()
@@ -32,12 +32,12 @@ def solved_flags(challenge_id: int):
         solved = Solved.query.filter_by(flag_id=flag.id).all()
         response[flag.id] = [solution.username for solution in solved]
 
-    if request.method == 'GET':
-        return jsonify(response), 200
+    return jsonify(response), 200
 
 
 @solved_bp.route('/<int:challenge_id>/solved', methods=['POST'])
 @auth.login_required
+@has_json_args("flag")
 def solve_flag(challenge_id: int):
     """
     Operations pertaining to the solved relations on a challenge (but really a flag).
@@ -47,29 +47,28 @@ def solve_flag(challenge_id: int):
     :POST: Attempt solution of all flags associated with this challenge
     """
     challenge = Challenge.query.filter_by(id=challenge_id).first()
-    precheck = TSAPreCheck().ensure_existence((challenge, Challenge)).has_json_args("flag")
+    precheck = TSAPreCheck()
+    if not challenge:
+        return not_found()
+
+    data = request.get_json()
+    flag_attempt = data['flag']
+    flags = Flag.query.filter_by(challenge_id=challenge_id).all()
+
+    current_user = precheck.get_current_user()
     if precheck.error_code:
         return jsonify(precheck.message), precheck.error_code
 
-    if request.method == 'POST':
-        data = request.get_json()
-        flag_attempt = data['flag']
-        flags = Flag.query.filter_by(challenge_id=challenge_id).all()
-        current_user = precheck.get_current_user()
-        if precheck.error_code:
-            return jsonify(precheck.message), precheck.error_code
+    for flag in flags:
+        if flag.flag == flag_attempt:
+            check_solved = Solved.query.filter_by(flag_id=flag.id,
+                                                  username=current_user).first()
+            if check_solved:
+                return collision()
 
-        for flag in flags:
-            if flag.flag == flag_attempt:
-                check_solved = Solved.query.filter_by(flag_id=flag.id,
-                                                      username=current_user).first()
-                precheck.ensure_nonexistence((check_solved, Solved))
-                if precheck.error_code:
-                    return jsonify(precheck.message), precheck.error_code
-
-                Solved.create(flag.id, current_user)
-                return jsonify(challenge.to_dict()), 201
-        return jsonify({
-            'status': "error",
-            'message': "Incorrect flag"
-        }), 400
+            Solved.create(flag.id, current_user)
+            return jsonify(challenge.to_dict()), 201
+    return jsonify({
+        'status': "error",
+        'message': "Incorrect flag"
+    }), 400

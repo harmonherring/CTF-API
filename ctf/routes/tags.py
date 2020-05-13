@@ -9,6 +9,7 @@ from sqlalchemy import func
 from ctf import auth
 from ctf.models import Challenge, ChallengeTag
 from ctf.utils import TSAPreCheck
+from ctf.constants import not_found, collision
 
 
 tags_bp = Blueprint("tags", __name__)
@@ -24,9 +25,8 @@ def all_tags(challenge_id: int):
     """
     # Ensure challenge exists
     challenge = Challenge.query.filter_by(id=challenge_id).first()
-    precheck = TSAPreCheck().ensure_existence((challenge, Challenge))
-    if precheck.error_code:
-        return jsonify(precheck.message), precheck.error_code
+    if not challenge:
+        return not_found()
 
     return jsonify([tag.to_dict() for tag in challenge.tags]), 200
 
@@ -38,14 +38,15 @@ def single_tag(challenge_id: int, tag_name: str):
     Creates a tag
     """
     challenge = Challenge.query.filter_by(id=challenge_id).first()
-    precheck = TSAPreCheck().ensure_existence((challenge, Challenge))
-    if precheck.error_code:
-        return jsonify(precheck.message), precheck.error_code
+    if not challenge:
+        return not_found()
 
     tag = ChallengeTag.query.filter(func.lower(ChallengeTag.tag) == func.lower(tag_name),
                                     ChallengeTag.challenge_id == challenge_id).first()
+    if tag:
+        return collision()
 
-    precheck.ensure_nonexistence((tag, ChallengeTag)).is_authorized(challenge.submitter)
+    precheck = TSAPreCheck().is_authorized(challenge.submitter)
     if precheck.error_code:
         return jsonify(precheck.message), precheck.error_code
 
@@ -60,14 +61,15 @@ def delete_tag(challenge_id: int, tag_name: str):
     Deletes the specified tag
     """
     challenge = Challenge.query.filter_by(id=challenge_id).first()
-    precheck = TSAPreCheck().ensure_existence((challenge, Challenge))
-    if precheck.error_code:
-        return jsonify(precheck.message), precheck.error_code
+    if not challenge:
+        return not_found()
 
     tag = ChallengeTag.query.filter(func.lower(ChallengeTag.tag) == func.lower(tag_name),
                                     ChallengeTag.challenge_id == challenge_id).first()
+    if not tag:
+        return not_found()
 
-    precheck.ensure_existence((tag, ChallengeTag)).is_authorized(challenge.submitter)
+    precheck = TSAPreCheck().is_authorized(challenge.submitter)
     if precheck.error_code:
         return jsonify(precheck.message), precheck.error_code
 

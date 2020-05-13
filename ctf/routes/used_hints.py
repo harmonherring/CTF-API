@@ -3,11 +3,12 @@
 Contains information regarding the used hints relationship
 """
 
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, jsonify
 
 from ctf import auth
 from ctf.models import UsedHint
 from ctf.utils import TSAPreCheck
+from ctf.constants import collision
 
 used_hints_bp = Blueprint('used_hints', __name__)
 
@@ -31,13 +32,11 @@ def create_hint(challenge_id: int = 0, flag_id: int = 0, hint_id: int = 0):
     if precheck.error_code:
         return jsonify(precheck.message), precheck.error_code
 
-    if request.method == 'POST':
-        # Check that the relation doesn't already exist
-        used_hints_check = UsedHint.query.filter_by(hint_id=hint_id, username=current_user).first()
-        precheck.ensure_nonexistence((used_hints_check, UsedHint))
-        if precheck.error_code:
-            return jsonify(precheck.message), precheck.error_code
+    # Check that the relation doesn't already exist
+    used_hints_check = UsedHint.query.filter_by(hint_id=hint_id, username=current_user).first()
+    if used_hints_check:
+        return collision()
 
-        # TODO: Check that the user has enough points for the cost
-        new_used_hint = UsedHint.create(hint_id, current_user)
-        return jsonify(new_used_hint.hint.to_dict()), 201
+    # TODO: Check that the user has enough points for the cost
+    new_used_hint = UsedHint.create(hint_id, current_user)
+    return jsonify(new_used_hint.hint.to_dict()), 201

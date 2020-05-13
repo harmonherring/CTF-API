@@ -7,7 +7,8 @@ from flask import Blueprint, request, jsonify
 
 from ctf import auth
 from ctf.models import Hint, Flag, UsedHint
-from ctf.utils import TSAPreCheck, delete_hint
+from ctf.utils import TSAPreCheck, delete_hint, has_json_args
+from ctf.constants import not_found
 
 hints_bp = Blueprint('hints', __name__)
 
@@ -20,19 +21,18 @@ def all_hints(challenge_id: int, flag_id: int):
     """
     Operations relating to the hints objects
 
-    :param challenge_id: This is probably going to be ignored, because hints are directly
-        associated with flags
-    :param flag_id: The flag of which we're manipulating hints
-
     :GET: Get all hints associated with the specified flag and challenge
-    :POST: Create a hint for a flag
     """
     flag = Flag.query.filter_by(id=flag_id).first()
-    precheck = TSAPreCheck().ensure_existence((flag, Flag))
+    if not flag:
+        return not_found()
+
+    precheck = TSAPreCheck()
     current_username = precheck.get_current_user()
     if precheck.error_code:
         return jsonify(precheck.message), precheck.error_code
 
+    # Delete a hint's data if a user hasn't unlocked it
     hints = [hint.to_dict() for hint in Hint.query.filter_by(flag_id=flag_id).all()]
     for hint in hints:
         if not UsedHint.query.filter_by(hint_id=hint['id'], username=current_username).first():
@@ -43,22 +43,25 @@ def all_hints(challenge_id: int, flag_id: int):
 @hints_bp.route('/challenges/<int:challenge_id>/flags/<int:flag_id>/hints', methods=['POST'])
 @hints_bp.route('/flags/<int:flag_id>/hints', methods=['POST'])
 @auth.login_required
+@has_json_args("cost", "hint")
 def create_hint(challenge_id: int, flag_id: int):
     # pylint: disable=unused-argument
     """
     Creates a hint given parameters in the application/json body
     """
     flag = Flag.query.filter_by(id=flag_id).first()
-    precheck = TSAPreCheck().ensure_existence((flag, Flag))
+    if not flag:
+        return not_found()
+
+    precheck = TSAPreCheck()
     current_username = precheck.get_current_user()
     if precheck.error_code:
         return jsonify(precheck.message), precheck.error_code
 
-    precheck.is_authorized(flag.challenge.submitter).has_json_args("cost", "hint")
-    if precheck.error_code:
-        return jsonify(precheck.message), precheck.error_code
     data = request.get_json()
     new_hint = Hint.create(data['cost'], data['hint'], flag_id)
+
+    # TODO: Remove this, change the hint return functions to reveal hint if current_user is creator
     UsedHint.create(new_hint['id'], current_username)
     return jsonify(new_hint), 201
 
@@ -75,11 +78,10 @@ def one_hint(challenge_id: int = 0, flag_id: int = 0, hint_id: int = 0):
     """
     hint = Hint.query.filter_by(id=hint_id).first()
 
-    precheck = TSAPreCheck().ensure_existence((hint, Hint))
-    if precheck.error_code:
-        return jsonify(precheck.message), precheck.error_code
+    if not hint:
+        return not_found()
 
-    precheck.is_authorized(hint.flag.challenge.submitter)
+    precheck = TSAPreCheck().is_authorized(hint.flag.challenge.submitter)
     if precheck.error_code:
         return jsonify(precheck.message), precheck.error_code
 

@@ -7,7 +7,8 @@ from flask import Blueprint, request, jsonify
 
 from ctf import auth
 from ctf.models import Difficulty
-from ctf.utils import TSAPreCheck
+from ctf.utils import has_json_args
+from ctf.constants import collision, not_found
 
 difficulties_bp = Blueprint("difficulties", __name__)
 
@@ -25,6 +26,7 @@ def all_difficulties():
 
 @difficulties_bp.route('', methods=['POST'])
 @auth.login_required(role=['rtp', 'ctf'])
+@has_json_args("name")
 def create_difficulty():
     """
     Creates a difficulty
@@ -32,12 +34,10 @@ def create_difficulty():
     Takes 'name' value from application/json body and creates a Difficulty
     """
     data = request.get_json()
-    check_difficulty = Difficulty.query.filter_by(name=data.get('name') if data.get('name')
-                                                  else None).first()
-    precheck = TSAPreCheck().is_authorized(None).has_json_args("name").ensure_nonexistence((
-        check_difficulty, Difficulty))
-    if precheck.error_code:
-        return jsonify(precheck.message), precheck.error_code
+
+    check_difficulty = Difficulty.query.filter_by(name=data['name']).first()
+    if check_difficulty:
+        return collision()
 
     new_difficulty = Difficulty.create(data['name'])
     return jsonify(new_difficulty), 201
@@ -50,8 +50,9 @@ def single_difficulty(difficulty_name: str):
     Deletes a difficulty
     """
     difficulty = Difficulty.query.filter_by(name=difficulty_name).first()
-    precheck = TSAPreCheck().ensure_existence((difficulty, Difficulty))
-    if precheck.error_code:
-        return jsonify(precheck.message), precheck.error_code
+
+    if not difficulty:
+        return not_found()
+
     difficulty.delete()
     return '', 204
