@@ -11,7 +11,8 @@ SECRET_KEY = environ.get("CTF_SECRET_KEY", None)
 
 SQLALCHEMY_TRACK_MODIFICATIONS = False
 SQLALCHEMY_POOL_RECYCLE = 500
-SQLALCHEMY_DATABASE_URI = environ.get('CTF_DATABASE_URI', 'sqlite:////{}'.format(path.join(getcwd(), 'data.db')))
+SQLALCHEMY_DATABASE_URI = environ.get('CTF_DATABASE_URI', 'sqlite:////{}'.format(
+    path.join(getcwd(), 'data.db')))
 
 # OpenID Connect SSO config
 OIDC_PUBLIC_KEY = \

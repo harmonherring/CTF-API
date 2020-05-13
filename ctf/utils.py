@@ -22,9 +22,10 @@ def verify_token(token):
     :return: The decoded payload
     """
     try:
-        if jwt.decode(token, app.config['OIDC_PUBLIC_KEY']):
+        if jwt.decode(token, app.config['OIDC_PUBLIC_KEY'], algorithms='RS256'):
             return token
-    except:
+    except Exception as jwt_error:
+        print(jwt_error)
         return None
 
 
