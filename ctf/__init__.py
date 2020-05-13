@@ -8,7 +8,6 @@ from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_httpauth import HTTPTokenAuth
 from flask_cors import CORS
-import csh_ldap
 
 import config
 

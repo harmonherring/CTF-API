@@ -49,7 +49,7 @@ def get_userinfo(token: str) -> dict:
     """
     Calls the configured SSO userinfo endpoint and returns the data from there
 
-    :param authorization_header: The authorization header to be sent
+    :param token: The authorization header to be sent
     :return: The information describing the current user
     """
     headers = {
