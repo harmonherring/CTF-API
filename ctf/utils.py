@@ -4,12 +4,89 @@ Contains useful functions used across many parts of the API
 """
 from typing import Tuple, Any, Type, Union
 
-from flask import request, session
+import requests
+from flask import request, jsonify
 from flask_sqlalchemy import Model
+import jwt
 
-from ctf import db
-from ctf.ldap import is_ctf_admin
+from ctf import db, auth, app
 from ctf.models import UsedHint, Hint, Solved, Flag, ChallengeTag, Challenge
+
+
+@auth.verify_token
+def verify_token(token):
+    """
+    Verifies that the given token came from a configured OIDC provider
+
+    :param token: Token passed in the authorization header
+    :return: The decoded payload
+    """
+    try:
+        if jwt.decode(token, app.config['OIDC_PUBLIC_KEY']):
+            return token
+    except:
+        return None
+
+
+@auth.get_user_roles
+def get_user_roles(user: str):
+    """
+    Returns the roles that this user has.
+
+    :param user: The access token handed by the client in the Authorization header
+    :return: The roles that this user has
+    :TODO: Scope access to certain endpoints
+    """
+    allowed_users = ["harmon"]
+    userinfo = get_userinfo(user)
+    roles = userinfo.get('groups', [])
+    if userinfo.get('preferred_username') in allowed_users:
+        roles.append("ctf")
+    return roles
+
+
+def get_userinfo(token: str) -> dict:
+    """
+    Calls the configured SSO userinfo endpoint and returns the data from there
+
+    :param authorization_header: The authorization header to be sent
+    :return: The information describing the current user
+    """
+    headers = {
+        "Authorization": "Bearer " + token
+    }
+    return requests.get(app.config['OIDC_USERINFO_ENDPOINT'], headers=headers).json()
+
+
+@auth.error_handler
+def auth_error(status):
+    """
+    Handles the authentication error return done by flask-httpauth
+
+    :param status: status code of the auth error
+    :return: JSON describing the error and the error code
+    """
+    if status == 401:
+        return jsonify(
+            {
+                'status': "error",
+                'message': "You aren't logged in"
+            }
+        ), status
+    elif status == 403:
+        return jsonify(
+            {
+                'status': "error",
+                'message': "You aren't authorized to do that"
+            }
+        ), status
+    else:
+        return jsonify(
+            {
+                'status': "error",
+                'message': "Access denied"
+            }
+        ), status
 
 
 class TSAPreCheck:
@@ -43,14 +120,17 @@ class TSAPreCheck:
         """
         if self.error_code:
             return self
-        current_user = session['userinfo'].get('preferred_username')
+        current_user = jwt.decode(auth.current_user(), app.config['OIDC_PUBLIC_KEY']).get(
+            'preferred_username')
         if not current_user:
             self.error_code = 401
             self.message = {
                 'status': "error",
                 'message': "Your session doesn't have the 'preferred_username' value"
             }
-        if not (is_ctf_admin(current_user) or current_user == user):
+        if not ('rtp' in auth.get_user_roles(auth.current_user()) or 'ctf' in
+                auth.get_user_roles(auth.current_user()) or
+                current_user == user):
             self.error_code = 403
             self.message = {
                 'status': "error",
@@ -122,21 +202,23 @@ class TSAPreCheck:
 
     def get_current_user(self) -> Union[str, None]:
         """
-        Returns the current user. If unable to get the current username, returns an instance of
-        self and sets 'error_code' and 'message' appropriately.
+        Returns the current user. If unable to get the current username, returns None and sets
+        'error_code' and 'message' appropriately.
         """
-        userinfo = session.get('userinfo')
-        if userinfo:
-            current_user = userinfo.get('preferred_username')
+        try:
+            current_user = jwt.decode(auth.current_user(), app.config['OIDC_PUBLIC_KEY'])[
+                'preferred_username']
             if current_user:
                 return current_user
-        self.error_code = 401
-        self.message = {
-            'status': "error",
-            'message': "Either the 'userinfo' or 'preferred_username' values don't exist in your "
-                       "session"
-        }
-        return None
+            else:
+                raise Exception
+        except:
+            self.error_code = 401
+            self.message = {
+                'status': "error",
+                'message': "Unable to retrieve user identification"
+            }
+            return None
 
 
 def delete_used_hints(hint_id: int):
@@ -209,7 +291,7 @@ def delete_flag(flag_id: int):
         flag.delete()
 
 
-def delete_challenge_tags(challenge_id: int) -> dict:
+def delete_challenge_tags(challenge_id: int):
     """
     Deletes all challenge tags with 'challenge_id'
 

@@ -13,7 +13,7 @@ solved_bp = Blueprint('solved', __name__)
 
 
 @solved_bp.route('/<int:challenge_id>/solved', methods=['GET'])
-@auth.oidc_auth
+@auth.login_required
 def solved_flags(challenge_id: int):
     """
     Operations pertaining to the solution of flags
@@ -37,7 +37,7 @@ def solved_flags(challenge_id: int):
 
 
 @solved_bp.route('/<int:challenge_id>/solved', methods=['POST'])
-@auth.oidc_auth
+@auth.login_required
 def solve_flag(challenge_id: int):
     """
     Operations pertaining to the solved relations on a challenge (but really a flag).

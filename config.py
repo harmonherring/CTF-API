@@ -1,4 +1,5 @@
 from os import environ, path, getcwd
+import requests
 
 APP_NAME = environ.get('CTF_APP_NAME', "CTF")
 HOST_NAME = environ.get('CTF_HOST_NAME', "localhost:5000")
@@ -13,6 +14,11 @@ SQLALCHEMY_POOL_RECYCLE = 500
 SQLALCHEMY_DATABASE_URI = environ.get('CTF_DATABASE_URI', 'sqlite:////{}'.format(path.join(getcwd(), 'data.db')))
 
 # OpenID Connect SSO config
+OIDC_PUBLIC_KEY = \
+    b"-----BEGIN PUBLIC KEY-----\n" + \
+    bytes(requests.get("https://sso.csh.rit.edu/auth/realms/csh").json()['public_key'], 'UTF-8') + \
+    b"\n-----END PUBLIC KEY-----"
+OIDC_USERINFO_ENDPOINT = "https://sso.csh.rit.edu/auth/realms/csh/protocol/openid-connect/userinfo"
 OIDC_ISSUER = environ.get('CTF_OIDC_ISSUER', 'https://sso.csh.rit.edu/auth/realms/csh')
 OIDC_CLIENT_CONFIG = {
     'client_id': environ.get('CTF_OIDC_CLIENT_ID', 'ctf'),
@@ -23,3 +29,6 @@ OIDC_CLIENT_CONFIG = {
 # LDAP config
 LDAP_DN = environ.get('CTF_LDAP_DN', "")
 LDAP_PW = environ.get('CTF_LDAP_PW', "")
+
+# CORS config
+CORS_SUPPORTS_CREDENTIALS = True

@@ -3,7 +3,7 @@
 Contains the routes pertaining to the retrieval, creation, and removal of challenges
 """
 
-from flask import Blueprint, request, jsonify, session
+from flask import Blueprint, request, jsonify
 from sqlalchemy import desc
 
 from ctf import auth
@@ -13,54 +13,58 @@ from ctf.utils import TSAPreCheck, delete_flags, delete_challenge_tags, get_all_
 challenges_bp = Blueprint('challenges', __name__)
 
 
-@challenges_bp.route('/', methods=['GET', 'POST'])
-@auth.oidc_auth
+@challenges_bp.route('', methods=['GET'])
+@auth.login_required
 def all_challenges():
     """
-    Operations involving challenges
-
-    :GET: Get some challenges. Can be paginated with 'limit' and 'offset' URL parameters
-    :POST: Create a challenge using the 'difficulty', 'category', 'title', 'description',
-        'author', and 'submitter values passed in the application/json body
+    Get all challenges
     """
-    if request.method == 'GET':
-        # 'limit' and 'offset' URL parameters can be used to modify which challenges are returned
-        limit = 10
-        offset = 1
-        if request.args.get('limit'):
-            limit = int(request.args['limit'])
-        if request.args.get('offset'):
-            offset = int(request.args['offset'])
-        precheck = TSAPreCheck()
-        current_user = precheck.get_current_user()
-        if precheck.error_code:
-            return jsonify(precheck.message), precheck.error_code
-        return jsonify([
-            get_all_challenge_data(challenge.id, current_user) for challenge in
-            Challenge.query.order_by(desc(Challenge.id)).paginate(offset, limit).items
-        ]), 200
-    elif request.method == 'POST':
-        precheck = TSAPreCheck().has_json_args("title", "description", "author", "difficulty",
-                                               "category")
-        if precheck.error_code:
-            return jsonify(precheck.message), precheck.error_code
-
-        data = request.get_json()
-        category = Category.query.filter_by(name=data['category'].lower()).first()
-        difficulty = Difficulty.query.filter_by(name=data['difficulty'].lower()).first()
-
-        precheck.ensure_existence((category, Category), (difficulty, Difficulty))
-        if precheck.error_code:
-            return jsonify(precheck.message), precheck.error_code
-
-        submitter = session['userinfo'].get('preferred_username')
-        new_challenge = Challenge.create(data['title'], data['description'], data['author'],
-                                         submitter, difficulty, category)
-        return jsonify(new_challenge), 201
+    # 'limit' and 'offset' URL parameters can be used to modify which challenges are returned
+    limit = 10
+    offset = 1
+    if request.args.get('limit'):
+        limit = int(request.args['limit'])
+    if request.args.get('offset'):
+        offset = int(request.args['offset'])
+    precheck = TSAPreCheck()
+    current_user = precheck.get_current_user()
+    if precheck.error_code:
+        return jsonify(precheck.message), precheck.error_code
+    return jsonify([
+        get_all_challenge_data(challenge.id, current_user) for challenge in
+        Challenge.query.order_by(desc(Challenge.id)).paginate(offset, limit).items
+    ]), 200
 
 
-@challenges_bp.route('/<int:challenge_id>', methods=['GET', 'DELETE'])
-@auth.oidc_auth
+@challenges_bp.route('', methods=['POST'])
+@auth.login_required
+def create_challenge():
+    """
+    Creates a challenge given parameters in application/json body
+    """
+    precheck = TSAPreCheck().has_json_args("title", "description", "author", "difficulty",
+                                           "category")
+    if precheck.error_code:
+        return jsonify(precheck.message), precheck.error_code
+
+    data = request.get_json()
+    category = Category.query.filter_by(name=data['category'].lower()).first()
+    difficulty = Difficulty.query.filter_by(name=data['difficulty'].lower()).first()
+
+    precheck.ensure_existence((category, Category), (difficulty, Difficulty))
+    if precheck.error_code:
+        return jsonify(precheck.message), precheck.error_code
+
+    submitter = precheck.get_current_user()
+    if precheck.error_code:
+        return jsonify(precheck.message), precheck.error_code
+    new_challenge = Challenge.create(data['title'], data['description'], data['author'],
+                                     submitter, difficulty, category)
+    return jsonify(new_challenge), 201
+
+
+@challenges_bp.route('/<int:challenge_id>', methods=['GET'])
+@auth.login_required
 def single_challenge(challenge_id: int):
     """
     Operations pertaining to a single challenge
@@ -68,20 +72,26 @@ def single_challenge(challenge_id: int):
     :GET: Get the challenge identified by 'challenge_id'
     :DELETE: Delete the challenge identified by 'challenge_id'
     """
-    if request.method == 'GET':
-        challenge = Challenge.query.filter_by(id=challenge_id).first()
-        precheck = TSAPreCheck().ensure_existence((challenge, Challenge))
-        current_user = precheck.get_current_user()
-        if precheck.error_code:
-            return jsonify(precheck.message), precheck.error_code
-        return jsonify(get_all_challenge_data(challenge.id, current_user)), 200
-    elif request.method == 'DELETE':
-        challenge = Challenge.query.filter_by(id=challenge_id).first()
-        precheck = TSAPreCheck().ensure_existence((challenge, Challenge)).is_authorized(
-            challenge.submitter if challenge is not None else None)
-        if precheck.error_code:
-            return jsonify(precheck.message), precheck.error_code
-        delete_challenge_tags(challenge.id)
-        delete_flags(challenge.id)
-        challenge.delete()
-        return '', 204
+    challenge = Challenge.query.filter_by(id=challenge_id).first()
+    precheck = TSAPreCheck().ensure_existence((challenge, Challenge))
+    current_user = precheck.get_current_user()
+    if precheck.error_code:
+        return jsonify(precheck.message), precheck.error_code
+    return jsonify(get_all_challenge_data(challenge.id, current_user)), 200
+
+
+@challenges_bp.route('/<int:challenge_id>', methods=['DELETE'])
+@auth.login_required(role=['rtp', 'ctf'])
+def delete_challenge(challenge_id: int):
+    """
+    Deletes the specified challenge
+    """
+    challenge = Challenge.query.filter_by(id=challenge_id).first()
+    precheck = TSAPreCheck().ensure_existence((challenge, Challenge)).is_authorized(
+        challenge.submitter if challenge is not None else None)
+    if precheck.error_code:
+        return jsonify(precheck.message), precheck.error_code
+    delete_challenge_tags(challenge.id)
+    delete_flags(challenge.id)
+    challenge.delete()
+    return '', 204
