@@ -7,7 +7,7 @@ from flask import Blueprint, request, jsonify
 
 from ctf import auth
 from ctf.models import Hint, Flag, UsedHint
-from ctf.utils import delete_hint, has_json_args, expose_userinfo
+from ctf.utils import delete_hint, has_json_args, expose_userinfo, is_ctf_admin
 from ctf.constants import not_found, not_authorized, no_username
 
 hints_bp = Blueprint('hints', __name__)
@@ -86,8 +86,7 @@ def one_hint(challenge_id: int = 0, flag_id: int = 0, hint_id: int = 0, **kwargs
     if not current_username:
         return no_username()
     groups = kwargs['userinfo'].get('groups')
-    if current_username != hint.flag.challenge.submitter and "rtp" not in groups and "ctf" not in\
-            groups:
+    if current_username != hint.flag.challenge.submitter and not is_ctf_admin(groups):
         return not_authorized()
 
     delete_hint(hint_id)

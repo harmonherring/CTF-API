@@ -12,7 +12,7 @@ from ctf.constants import not_found, collision
 categories_bp = Blueprint('categories', __name__)
 
 
-@categories_bp.route('', methods=['GET', 'OPTIONS'])
+@categories_bp.route('', methods=['GET'])
 @auth.login_required
 def get_all_categories():
     """

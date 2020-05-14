@@ -53,6 +53,11 @@ def get_userinfo(token: str) -> dict:
     }
     userinfo = requests.get(app.config['OIDC_USERINFO_ENDPOINT'], headers=headers).json()
     current_username = userinfo.get('preferred_username')
+
+    # Just in case an actual role called "ctf" exists...
+    # TODO: Get an actual role created for this
+    userinfo['groups'] = [group for group in userinfo['groups'] if group != 'ctf']
+
     if current_username in CTF_ADMINS:
         userinfo['groups'].append('ctf')
     return userinfo
@@ -128,6 +133,11 @@ def expose_userinfo(func):
     @wraps(func)
     def wrapper(*args, **kwargs):
         current_token = auth.current_user()
+        if not current_token:
+            return jsonify({
+                'status': "error",
+                'message': "Not authenticated"
+            }), 401
         userinfo = get_userinfo(current_token)
         return func(*args, **kwargs, userinfo=userinfo)
     return wrapper
@@ -257,3 +267,15 @@ def calculate_score(username: str) -> int:
         if hint.hint.flag.challenge.submitter != username:
             total_score -= hint.hint.cost
     return total_score
+
+
+def is_ctf_admin(groups: list) -> bool:
+    """
+    Quick function to determine if a user is an rtp or ctf admin
+
+    :param groups: List of the user's groups
+    :return: Boolean describing whether or not this user can administrate
+    """
+    if "rtp" in groups or "ctf" in groups:
+        return True
+    return False

@@ -9,7 +9,7 @@ from sqlalchemy import desc
 from ctf import auth
 from ctf.models import Challenge, Difficulty, Category
 from ctf.utils import delete_flags, delete_challenge_tags, get_all_challenge_data, has_json_args, \
-    expose_userinfo
+    expose_userinfo, is_ctf_admin
 from ctf.constants import not_found, no_username, not_authorized
 
 challenges_bp = Blueprint('challenges', __name__)
@@ -103,7 +103,7 @@ def delete_challenge(challenge_id: int, **kwargs):
     if not current_username:
         return no_username()
     groups = kwargs['userinfo'].get('groups')
-    if (current_username != challenge.submitter) and "rtp" not in groups and 'ctf' not in groups:
+    if (current_username != challenge.submitter) and (not is_ctf_admin(groups)):
         return not_authorized()
 
     delete_challenge_tags(challenge.id)

@@ -8,7 +8,7 @@ from sqlalchemy import func
 
 from ctf import auth
 from ctf.models import Challenge, ChallengeTag
-from ctf.utils import expose_userinfo
+from ctf.utils import expose_userinfo, is_ctf_admin
 from ctf.constants import not_found, collision, no_username, not_authorized
 
 
@@ -51,7 +51,7 @@ def single_tag(challenge_id: int, tag_name: str, **kwargs):
     if not current_username:
         return no_username()
     groups = kwargs['userinfo'].get('groups')
-    if current_username != challenge.submitter and "rtp" not in groups and "ctf" not in groups:
+    if current_username != challenge.submitter and not is_ctf_admin(groups):
         return not_authorized()
 
     new_tag = ChallengeTag.create(challenge_id, tag_name)
@@ -78,7 +78,7 @@ def delete_tag(challenge_id: int, tag_name: str, **kwargs):
     if not current_username:
         return no_username()
     groups = kwargs['userinfo'].get('groups')
-    if current_username != challenge.submitter and "rtp" not in groups and "ctf" not in groups:
+    if current_username != challenge.submitter and not is_ctf_admin(groups):
         return not_authorized()
 
     tag.delete()

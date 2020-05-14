@@ -7,7 +7,7 @@ from flask import Blueprint, request, jsonify
 
 from ctf import auth
 from ctf.models import Flag, Challenge, Solved
-from ctf.utils import delete_flag, has_json_args, expose_userinfo
+from ctf.utils import delete_flag, has_json_args, expose_userinfo, is_ctf_admin
 from ctf.constants import not_found, collision, not_authorized, no_username
 
 flags_bp = Blueprint('flags', __name__)
@@ -61,7 +61,7 @@ def add_flag(challenge_id: int, **kwargs):
     if not current_username:
         return no_username()
     groups = kwargs['userinfo'].get('groups')
-    if current_username != challenge.submitter and "rtp" not in groups and "ctf" not in groups:
+    if current_username != challenge.submitter and not is_ctf_admin(groups):
         return not_authorized()
 
     new_flag = Flag.create(data['point_value'], data['flag'], challenge_id)
@@ -86,7 +86,7 @@ def single_flag(challenge_id: int = 0, flag_id: int = 0, **kwargs):
     if not current_username:
         return no_username()
     groups = kwargs['userinfo'].get('groups')
-    if current_username != flag.challenge.submitter and "rtp" not in groups and "ctf" not in groups:
+    if current_username != flag.challenge.submitter and not is_ctf_admin(groups):
         return not_authorized()
 
     delete_flag(flag.id)
