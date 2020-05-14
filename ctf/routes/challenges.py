@@ -30,7 +30,7 @@ def all_challenges(**kwargs):
     if request.args.get('offset'):
         offset = int(request.args['offset'])
 
-    current_user = kwargs['userinfo'].get('userinfo')
+    current_user = kwargs['userinfo'].get('preferred_username')
     if not current_user:
         return no_username()
 
