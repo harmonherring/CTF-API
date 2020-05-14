@@ -7,8 +7,8 @@ from flask import Blueprint, request, jsonify
 
 from ctf import auth
 from ctf.models import Hint, Flag, UsedHint
-from ctf.utils import TSAPreCheck, delete_hint, has_json_args
-from ctf.constants import not_found
+from ctf.utils import delete_hint, has_json_args, expose_userinfo
+from ctf.constants import not_found, not_authorized, no_username
 
 hints_bp = Blueprint('hints', __name__)
 
@@ -16,7 +16,8 @@ hints_bp = Blueprint('hints', __name__)
 @hints_bp.route('/challenges/<int:challenge_id>/flags/<int:flag_id>/hints', methods=['GET'])
 @hints_bp.route('/flags/<int:flag_id>/hints', methods=['GET'])
 @auth.login_required
-def all_hints(challenge_id: int, flag_id: int):
+@expose_userinfo
+def all_hints(challenge_id: int, flag_id: int, **kwargs):
     # pylint: disable=unused-argument
     """
     Operations relating to the hints objects
@@ -27,10 +28,9 @@ def all_hints(challenge_id: int, flag_id: int):
     if not flag:
         return not_found()
 
-    precheck = TSAPreCheck()
-    current_username = precheck.get_current_user()
-    if precheck.error_code:
-        return jsonify(precheck.message), precheck.error_code
+    current_username = kwargs['userinfo'].get('preferred_username')
+    if not current_username:
+        return no_username()
 
     # Delete a hint's data if a user hasn't unlocked it
     hints = [hint.to_dict() for hint in Hint.query.filter_by(flag_id=flag_id).all()]
@@ -44,7 +44,8 @@ def all_hints(challenge_id: int, flag_id: int):
 @hints_bp.route('/flags/<int:flag_id>/hints', methods=['POST'])
 @auth.login_required
 @has_json_args("cost", "hint")
-def create_hint(challenge_id: int, flag_id: int):
+@expose_userinfo
+def create_hint(challenge_id: int, flag_id: int, **kwargs):
     # pylint: disable=unused-argument
     """
     Creates a hint given parameters in the application/json body
@@ -53,10 +54,9 @@ def create_hint(challenge_id: int, flag_id: int):
     if not flag:
         return not_found()
 
-    precheck = TSAPreCheck()
-    current_username = precheck.get_current_user()
-    if precheck.error_code:
-        return jsonify(precheck.message), precheck.error_code
+    current_username = kwargs['userinfo'].get('preferred_username')
+    if not current_username:
+        return no_username()
 
     data = request.get_json()
     new_hint = Hint.create(data['cost'], data['hint'], flag_id)
@@ -70,8 +70,9 @@ def create_hint(challenge_id: int, flag_id: int):
                 methods=['DELETE'])
 @hints_bp.route('/flags/<int:flag_id>/hints/<int:hint_id>', methods=['DELETE'])
 @hints_bp.route('/hints/<int:hint_id>', methods=['DELETE'])
-@auth.login_required(role=['rtp', 'ctf'])
-def one_hint(challenge_id: int = 0, flag_id: int = 0, hint_id: int = 0):
+@auth.login_required
+@expose_userinfo
+def one_hint(challenge_id: int = 0, flag_id: int = 0, hint_id: int = 0, **kwargs):
     # pylint: disable=unused-argument
     """
     Deletes the specified hint
@@ -81,9 +82,13 @@ def one_hint(challenge_id: int = 0, flag_id: int = 0, hint_id: int = 0):
     if not hint:
         return not_found()
 
-    precheck = TSAPreCheck().is_authorized(hint.flag.challenge.submitter)
-    if precheck.error_code:
-        return jsonify(precheck.message), precheck.error_code
+    current_username = kwargs['userinfo'].get('preferred_username')
+    if not current_username:
+        return no_username()
+    groups = kwargs['userinfo'].get('groups')
+    if current_username != hint.flag.challenge.submitter and "rtp" not in groups and "ctf" not in\
+            groups:
+        return not_authorized()
 
     delete_hint(hint_id)
     return '', 204

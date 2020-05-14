@@ -8,8 +8,8 @@ from sqlalchemy import func
 
 from ctf import auth
 from ctf.models import Challenge, ChallengeTag
-from ctf.utils import TSAPreCheck
-from ctf.constants import not_found, collision
+from ctf.utils import expose_userinfo
+from ctf.constants import not_found, collision, no_username, not_authorized
 
 
 tags_bp = Blueprint("tags", __name__)
@@ -33,7 +33,8 @@ def all_tags(challenge_id: int):
 
 @tags_bp.route('/<int:challenge_id>/tags/<tag_name>', methods=['POST'])
 @auth.login_required
-def single_tag(challenge_id: int, tag_name: str):
+@expose_userinfo
+def single_tag(challenge_id: int, tag_name: str, **kwargs):
     """
     Creates a tag
     """
@@ -46,9 +47,12 @@ def single_tag(challenge_id: int, tag_name: str):
     if tag:
         return collision()
 
-    precheck = TSAPreCheck().is_authorized(challenge.submitter)
-    if precheck.error_code:
-        return jsonify(precheck.message), precheck.error_code
+    current_username = kwargs['userinfo'].get('preferred_username')
+    if not current_username:
+        return no_username()
+    groups = kwargs['userinfo'].get('groups')
+    if current_username != challenge.submitter and "rtp" not in groups and "ctf" not in groups:
+        return not_authorized()
 
     new_tag = ChallengeTag.create(challenge_id, tag_name)
     return jsonify(new_tag), 201
@@ -56,7 +60,8 @@ def single_tag(challenge_id: int, tag_name: str):
 
 @tags_bp.route('/<int:challenge_id>/tags/<tag_name>', methods=['DELETE'])
 @auth.login_required
-def delete_tag(challenge_id: int, tag_name: str):
+@expose_userinfo
+def delete_tag(challenge_id: int, tag_name: str, **kwargs):
     """
     Deletes the specified tag
     """
@@ -69,9 +74,12 @@ def delete_tag(challenge_id: int, tag_name: str):
     if not tag:
         return not_found()
 
-    precheck = TSAPreCheck().is_authorized(challenge.submitter)
-    if precheck.error_code:
-        return jsonify(precheck.message), precheck.error_code
+    current_username = kwargs['userinfo'].get('preferred_username')
+    if not current_username:
+        return no_username()
+    groups = kwargs['userinfo'].get('groups')
+    if current_username != challenge.submitter and "rtp" not in groups and "ctf" not in groups:
+        return not_authorized()
 
     tag.delete()
     return '', 204

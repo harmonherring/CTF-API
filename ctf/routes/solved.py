@@ -7,8 +7,8 @@ from flask import Blueprint, jsonify, request
 
 from ctf import auth
 from ctf.models import Solved, Flag, Challenge
-from ctf.utils import TSAPreCheck, has_json_args
-from ctf.constants import collision, not_found
+from ctf.utils import has_json_args, expose_userinfo
+from ctf.constants import collision, not_found, no_username
 
 solved_bp = Blueprint('solved', __name__)
 
@@ -38,7 +38,8 @@ def solved_flags(challenge_id: int):
 @solved_bp.route('/<int:challenge_id>/solved', methods=['POST'])
 @auth.login_required
 @has_json_args("flag")
-def solve_flag(challenge_id: int):
+@expose_userinfo
+def solve_flag(challenge_id: int, **kwargs):
     """
     Operations pertaining to the solved relations on a challenge (but really a flag).
 
@@ -47,7 +48,6 @@ def solve_flag(challenge_id: int):
     :POST: Attempt solution of all flags associated with this challenge
     """
     challenge = Challenge.query.filter_by(id=challenge_id).first()
-    precheck = TSAPreCheck()
     if not challenge:
         return not_found()
 
@@ -55,18 +55,18 @@ def solve_flag(challenge_id: int):
     flag_attempt = data['flag']
     flags = Flag.query.filter_by(challenge_id=challenge_id).all()
 
-    current_user = precheck.get_current_user()
-    if precheck.error_code:
-        return jsonify(precheck.message), precheck.error_code
+    current_username = kwargs['userinfo'].get('preferred_username')
+    if not current_username:
+        return no_username()
 
     for flag in flags:
         if flag.flag == flag_attempt:
             check_solved = Solved.query.filter_by(flag_id=flag.id,
-                                                  username=current_user).first()
+                                                  username=current_username).first()
             if check_solved:
                 return collision()
 
-            Solved.create(flag.id, current_user)
+            Solved.create(flag.id, current_username)
             return jsonify(challenge.to_dict()), 201
     return jsonify({
         'status': "error",

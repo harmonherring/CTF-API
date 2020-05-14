@@ -7,15 +7,16 @@ from flask import Blueprint, request, jsonify
 
 from ctf import auth
 from ctf.models import Flag, Challenge, Solved
-from ctf.utils import TSAPreCheck, delete_flag, has_json_args
-from ctf.constants import not_found, collision
+from ctf.utils import delete_flag, has_json_args, expose_userinfo
+from ctf.constants import not_found, collision, not_authorized, no_username
 
 flags_bp = Blueprint('flags', __name__)
 
 
 @flags_bp.route('/challenges/<int:challenge_id>/flags', methods=['GET'])
 @auth.login_required
-def all_flags(challenge_id: int):
+@expose_userinfo
+def all_flags(challenge_id: int, **kwargs):
     """
     Operations relating to flags
 
@@ -28,14 +29,13 @@ def all_flags(challenge_id: int):
         return not_found()
 
     # If the person hasn't solved the flag, the flag data should be omitted.
-    precheck = TSAPreCheck()
-    current_user = precheck.get_current_user()
-    if precheck.error_code:
-        return jsonify(precheck.message), precheck.error_code
+    current_username = kwargs['userinfo'].get('preferred_username')
+    if not current_username:
+        return no_username()
 
     flags = [flag.to_dict() for flag in Flag.query.filter_by(challenge_id=challenge_id).all()]
     for flag in flags:
-        if not Solved.query.filter_by(username=current_user, flag_id=flag['id']).first():
+        if not Solved.query.filter_by(username=current_username, flag_id=flag['id']).first():
             del flag['flag']
     return jsonify(flags), 200
 
@@ -43,7 +43,8 @@ def all_flags(challenge_id: int):
 @flags_bp.route('/challenges/<int:challenge_id>/flags', methods=['POST'])
 @auth.login_required
 @has_json_args("point_value", "flag")
-def add_flag(challenge_id: int):
+@expose_userinfo
+def add_flag(challenge_id: int, **kwargs):
     """
     Create a flag given parameters in application/json body
     """
@@ -55,9 +56,13 @@ def add_flag(challenge_id: int):
     flag_exists = Flag.query.filter_by(challenge_id=challenge_id, flag=data['flag']).first()
     if flag_exists:
         return collision()
-    precheck = TSAPreCheck().is_authorized(challenge.submitter)
-    if precheck.error_code:
-        return jsonify(precheck.message), precheck.error_code
+
+    current_username = kwargs['userinfo'].get('preferred_username')
+    if not current_username:
+        return no_username()
+    groups = kwargs['userinfo'].get('groups')
+    if current_username != challenge.submitter and "rtp" not in groups and "ctf" not in groups:
+        return not_authorized()
 
     new_flag = Flag.create(data['point_value'], data['flag'], challenge_id)
     Solved.create(new_flag['id'], challenge.submitter)
@@ -66,8 +71,9 @@ def add_flag(challenge_id: int):
 
 @flags_bp.route('/<int:challenge_id>/flags/<int:flag_id>', methods=['DELETE'])
 @flags_bp.route('/flags/<int:flag_id>', methods=['DELETE'])
-@auth.login_required(role=['ctf', 'rtp'])
-def single_flag(challenge_id: int = 0, flag_id: int = 0):
+@auth.login_required
+@expose_userinfo
+def single_flag(challenge_id: int = 0, flag_id: int = 0, **kwargs):
     # pylint: disable=unused-argument
     """
     Deletes the flag specified
@@ -76,9 +82,12 @@ def single_flag(challenge_id: int = 0, flag_id: int = 0):
     if not flag:
         return not_found()
 
-    precheck = TSAPreCheck().is_authorized(flag.challenge.submitter)
-    if precheck.error_code:
-        return jsonify(precheck.message), precheck.error_code
+    current_username = kwargs['userinfo'].get('preferred_username')
+    if not current_username:
+        return no_username()
+    groups = kwargs['userinfo'].get('groups')
+    if current_username != flag.challenge.submitter and "rtp" not in groups and "ctf" not in groups:
+        return not_authorized()
 
     delete_flag(flag.id)
     return '', 204

@@ -2,16 +2,15 @@
 
 Contains useful functions used across many parts of the API
 """
-from typing import Tuple, Any, Type, Union
 from functools import wraps
 
 import requests
 from flask import request, jsonify
-from flask_sqlalchemy import Model
 import jwt
 
 from ctf import db, auth, app
 from ctf.models import UsedHint, Hint, Solved, Flag, ChallengeTag, Challenge
+from ctf.constants import CTF_ADMINS
 
 
 @auth.verify_token
@@ -39,12 +38,7 @@ def get_user_roles(user: str):
     :return: The roles that this user has
     :TODO: Scope access to certain endpoints
     """
-    allowed_users = ["harmon"]
-    userinfo = get_userinfo(user)
-    roles = userinfo.get('groups', [])
-    if userinfo.get('preferred_username') in allowed_users:
-        roles.append("ctf")
-    return roles
+    return get_userinfo(user).get('groups')
 
 
 def get_userinfo(token: str) -> dict:
@@ -57,7 +51,11 @@ def get_userinfo(token: str) -> dict:
     headers = {
         "Authorization": "Bearer " + token
     }
-    return requests.get(app.config['OIDC_USERINFO_ENDPOINT'], headers=headers).json()
+    userinfo = requests.get(app.config['OIDC_USERINFO_ENDPOINT'], headers=headers).json()
+    current_username = userinfo.get('preferred_username')
+    if current_username in CTF_ADMINS:
+        userinfo['groups'].append('ctf')
+    return userinfo
 
 
 @auth.error_handler
@@ -122,136 +120,17 @@ def has_json_args(*json_args):
     return decorator
 
 
-class TSAPreCheck:
+def expose_userinfo(func):
     """
-    Contains the functions for performing various checks. Most of these checks require access to
-    the session and request Flask objects. As such, this object should only ever exist inside of
-    a Flask route
+    Exposes the current user's username in the current_username kwarg of the wrapped function
+    Must be called in conjunction with auth.login_required
     """
-    error_code = 0
-    message = dict()
-
-    def __init__(self):
-        """
-        Initializes a Precheck with no error code and an empty message
-        """
-        self.error_code = 0
-        self.message = dict()
-
-    def reset(self):
-        """
-        Resets this Precheck to its original state
-        """
-        self.error_code = 0
-        self.message = dict()
-
-    def is_authorized(self, user: str or None):
-        """
-        Uses the FLask session to determine if the current user is a CTF administrator, an RTP,
-        or the person passed as the 'user' parameter
-        :param user: The user who the current user should be
-        """
-        if self.error_code:
-            return self
-        current_user = jwt.decode(auth.current_user(), app.config['OIDC_PUBLIC_KEY']).get(
-            'preferred_username')
-        if not current_user:
-            self.error_code = 401
-            self.message = {
-                'status': "error",
-                'message': "Your session doesn't have the 'preferred_username' value"
-            }
-        if not ('rtp' in get_user_roles(auth.current_user()) or 'ctf' in
-                get_user_roles(auth.current_user()) or
-                current_user == user):
-            self.error_code = 403
-            self.message = {
-                'status': "error",
-                'message': "You aren't authorized for this action"
-            }
-        return self
-
-    def has_json_args(self, *args):
-        """
-        Checks the request to ensure the Content-Type is application/json and then iterates over
-        every value specified in *args and ensures it exists in the request body
-        """
-        if self.error_code:
-            return self
-        if not request.is_json:
-            self.error_code = 415
-            self.message = {
-                'status': "error",
-                'message': "Content-Type must be application/json"
-            }
-        data = request.get_json()
-        missing_args = []
-        for json_arg in args:
-            if not data.get(json_arg):
-                missing_args.append(json_arg)
-        if len(missing_args) > 0:
-            self.error_code = 422
-            self.message = {
-                'status': "error",
-                'message': "You're missing at the following required arguments in your "
-                           "application/json body: " + ', '.join([str(missing_arg) for
-                                                                  missing_arg in missing_args])
-                }
-        return self
-
-    def ensure_existence(self, *args: Tuple[Any, Type[Model]]):
-        """
-        Accepts tuples, where the first value is the arg to test the existence of, and the second
-        value is the table model it belongs to (for error message purposes).
-        This is primarily used for determining if anything was returned from a database query
-        """
-        if self.error_code:
-            return self
-        for query in args:
-            if not query[0]:
-                self.error_code = 404
-                self.message = {
-                    'status': "error",
-                    'message': query[1].__name__ + " does not exist"
-                }
-        return self
-
-    def ensure_nonexistence(self, *args: Tuple[Any, Type[Model]]):
-        """
-        Accepts tuples, where the first value is the arg to test the nonexistence of, and the second
-        value is the table model it belongs to (for error message purposes).
-        This is primarily used for ensuring nothing is returned from a database query
-        """
-        if self.error_code:
-            return self
-        for query in args:
-            if query[0] is not None:
-                self.error_code = 409
-                self.message = {
-                    'status': "error",
-                    'message': query[1].__name__ + " already exists"
-                }
-        return self
-
-    def get_current_user(self) -> Union[str, None]:
-        """
-        Returns the current user. If unable to get the current username, returns None and sets
-        'error_code' and 'message' appropriately.
-        """
-        try:
-            current_user = jwt.decode(auth.current_user(), app.config['OIDC_PUBLIC_KEY'])[
-                'preferred_username']
-            if current_user:
-                return current_user
-            else:
-                raise Exception
-        except:
-            self.error_code = 401
-            self.message = {
-                'status': "error",
-                'message': "Unable to retrieve user identification"
-            }
-            return None
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        current_token = auth.current_user()
+        userinfo = get_userinfo(current_token)
+        return func(*args, **kwargs, userinfo=userinfo)
+    return wrapper
 
 
 def delete_used_hints(hint_id: int):

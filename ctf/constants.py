@@ -4,6 +4,8 @@ Contains constant values
 """
 from flask import jsonify
 
+CTF_ADMINS = ["harmon"]
+
 
 def collision():
     """
@@ -23,3 +25,23 @@ def not_found():
         'status': "error",
         'message': "The requested resource doesn't exist"
     }), 404
+
+
+def not_authorized():
+    """
+    Return data for when a user isn't authorized to do something
+    """
+    return jsonify({
+        'status': "error",
+        'message': "You aren't authorized to perform that action"
+    }), 403
+
+
+def no_username():
+    """
+    Return data for when someone doesn't have the preferred_username value in their userinfo
+    """
+    return jsonify({
+        'status': "error",
+        'message': "I can't figure out what your username is"
+    }), 401
