@@ -35,7 +35,7 @@ def create_difficulty():
     """
     data = request.get_json()
 
-    check_difficulty = Difficulty.query.filter_by(name=data['name']).first()
+    check_difficulty = Difficulty.query.filter_by(name=data['name'].lower()).first()
     if check_difficulty:
         return collision()
 

@@ -36,7 +36,7 @@ def create_new_category():
     """
     data = request.get_json()
 
-    check_existing_category = Category.query.filter_by(name=data['name']).first()
+    check_existing_category = Category.query.filter_by(name=data['name'].lower()).first()
     if check_existing_category:
         return collision()
 
@@ -55,7 +55,7 @@ def get_category(category_name: str):
     :GET: Returns the category's values
     :DELETE: Deletes the category
     """
-    category = Category.query.filter_by(name=category_name).first()
+    category = Category.query.filter_by(name=category_name.lower()).first()
     if not category:
         return not_found()
     return jsonify(category.to_dict()), 200
@@ -67,8 +67,15 @@ def delete_category(category_name: str):
     """
     Delete the specified category
     """
-    category = Category.query.filter_by(name=category_name).first()
+    category = Category.query.filter_by(name=category_name.lower()).first()
     if not category:
         return not_found()
+
+    if Challenge.query.filter_by(category_name=category_name.lower()):
+        return jsonify({
+            'status': "error",
+            'message': "You can't delete a category unless no challenges exist in that category"
+        }), 409
+
     category.delete()
     return '', 204
