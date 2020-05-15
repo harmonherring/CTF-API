@@ -5,7 +5,7 @@ Contains the routes pertaining to the categories a challenge can fit in to.
 from flask import Blueprint, jsonify, request
 
 from ctf import auth
-from ctf.models import Category
+from ctf.models import Category, Challenge
 from ctf.utils import has_json_args
 from ctf.constants import not_found, collision
 
@@ -17,8 +17,14 @@ categories_bp = Blueprint('categories', __name__)
 def get_all_categories():
     """
     Get all categories
+
+    TODO: Might be a good idea to give each category an id and have Challenges hold that id instead
+        of name
     """
-    return jsonify([category.to_dict() for category in Category.query.all()]), 200
+    categories = [category.to_dict() for category in Category.query.all()]
+    for category in categories:
+        category['count'] = Challenge.query.filter_by(category_name=category['name']).count()
+    return jsonify(categories), 200
 
 
 @categories_bp.route('', methods=['POST'])
