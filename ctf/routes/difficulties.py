@@ -39,7 +39,7 @@ def create_difficulty():
     if check_difficulty:
         return collision()
 
-    new_difficulty = Difficulty.create(data['name'])
+    new_difficulty = Difficulty.create(data['name'].lower())
     return jsonify(new_difficulty), 201
 
 
