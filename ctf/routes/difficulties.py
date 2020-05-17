@@ -6,7 +6,7 @@ Contains the API routes pertaining to the available challenge difficulties
 from flask import Blueprint, request, jsonify
 
 from ctf import auth
-from ctf.models import Difficulty
+from ctf.models import Difficulty, Challenge
 from ctf.utils import has_json_args
 from ctf.constants import collision, not_found
 
@@ -21,7 +21,11 @@ def all_difficulties():
 
     :GET: Get all available difficulties
     """
-    return jsonify([difficulty.to_dict()['name'] for difficulty in Difficulty.query.all()]), 200
+    difficulties = [difficulty.to_dict() for difficulty in Difficulty.query.all()]
+    for difficulty in difficulties:
+        difficulty['count'] = Challenge.query.filter_by(difficulty_name=difficulty['name']).count()
+
+    return jsonify(difficulties), 200
 
 
 @difficulties_bp.route('', methods=['POST'])
@@ -49,10 +53,16 @@ def single_difficulty(difficulty_name: str):
     """
     Deletes a difficulty
     """
-    difficulty = Difficulty.query.filter_by(name=difficulty_name).first()
+    difficulty = Difficulty.query.filter_by(name=difficulty_name.lower()).first()
 
     if not difficulty:
         return not_found()
+
+    if Challenge.query.filter_by(difficulty_name=difficulty_name.lower()).first():
+        return jsonify({
+            'status': "error",
+            'message': "You can't delete a difficulty that's being used by any challenges"
+        }), 409
 
     difficulty.delete()
     return '', 204
