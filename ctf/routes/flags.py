@@ -90,4 +90,6 @@ def single_flag(challenge_id: int = 0, flag_id: int = 0, **kwargs):
         return not_authorized()
 
     delete_flag(flag.id)
-    return '', 204
+    return jsonify({
+        'status': "success"
+    }), 200

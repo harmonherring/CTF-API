@@ -109,4 +109,6 @@ def delete_challenge(challenge_id: int, **kwargs):
     delete_challenge_tags(challenge.id)
     delete_flags(challenge.id)
     challenge.delete()
-    return '', 204
+    return jsonify({
+        'status': "success"
+    }), 200

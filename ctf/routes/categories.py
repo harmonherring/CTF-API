@@ -71,11 +71,13 @@ def delete_category(category_name: str):
     if not category:
         return not_found()
 
-    if Challenge.query.filter_by(category_name=category_name.lower()):
+    if Challenge.query.filter_by(category_name=category_name.lower()).first():
         return jsonify({
             'status': "error",
             'message': "You can't delete a category unless no challenges exist in that category"
         }), 409
 
     category.delete()
-    return '', 204
+    return jsonify({
+        'status': "success"
+    }), 200

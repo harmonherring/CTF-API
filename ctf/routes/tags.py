@@ -82,4 +82,6 @@ def delete_tag(challenge_id: int, tag_name: str, **kwargs):
         return not_authorized()
 
     tag.delete()
-    return '', 204
+    return jsonify({
+        'status': "success"
+    }), 200

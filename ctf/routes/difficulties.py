@@ -65,4 +65,6 @@ def single_difficulty(difficulty_name: str):
         }), 409
 
     difficulty.delete()
-    return '', 204
+    return jsonify({
+        'status': "success"
+    }), 200

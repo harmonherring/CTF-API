@@ -90,4 +90,6 @@ def one_hint(challenge_id: int = 0, flag_id: int = 0, hint_id: int = 0, **kwargs
         return not_authorized()
 
     delete_hint(hint_id)
-    return '', 204
+    return jsonify({
+        'status': "success"
+    }), 200
