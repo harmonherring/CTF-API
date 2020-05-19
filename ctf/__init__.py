@@ -18,7 +18,8 @@ db = SQLAlchemy(app)
 auth = HTTPTokenAuth(scheme='Bearer')
 
 # pylint: disable=wrong-import-position
-from ctf.routes import categories, difficulties, challenges, tags, solved, flags, hints, used_hints
+from ctf.routes import categories, difficulties, challenges, tags, solved, flags, hints, \
+    used_hints, user
 # pylint: enable=wrong-import-position
 
 app.register_blueprint(categories, url_prefix='/categories')
@@ -29,3 +30,4 @@ app.register_blueprint(solved, url_prefix='/challenges')
 app.register_blueprint(flags)
 app.register_blueprint(hints)
 app.register_blueprint(used_hints)
+app.register_blueprint(user, url_prefix='/user')
