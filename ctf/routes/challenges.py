@@ -25,18 +25,32 @@ def all_challenges(**kwargs):
     # 'limit' and 'offset' URL parameters can be used to modify which challenges are returned
     limit = 10
     offset = 1
-    if request.args.get('limit'):
-        limit = int(request.args['limit'])
-    if request.args.get('offset'):
-        offset = int(request.args['offset'])
+    if limit_val := request.args.get('limit'):
+        limit = int(limit_val)
+    if offset_val := request.args.get('offset'):
+        offset = int(offset_val)
+
+    # Category and Difficulty parameters are a comma-separated list of categories/difficulties
+    categories = []
+    difficulties = []
+    if category_names := request.args.get('categories'):
+        categories = category_names.split(',')
+    if difficulty_names := request.args.get('difficulties'):
+        difficulties = difficulty_names.split(',')
 
     current_user = kwargs['userinfo'].get('preferred_username')
     if not current_user:
         return no_username()
 
+    challenges = Challenge.query
+    if categories:
+        challenges = challenges.filter(Challenge.category_name.in_(categories))
+    if difficulties:
+        challenges = challenges.filter(Challenge.difficulty_name.in_(difficulties))
+    challenges = challenges.order_by(desc(Challenge.id)).paginate(offset, limit).items
+
     return jsonify([
-        get_all_challenge_data(challenge.id, current_user) for challenge in
-        Challenge.query.order_by(desc(Challenge.id)).paginate(offset, limit).items
+        get_all_challenge_data(challenge.id, current_user) for challenge in challenges
     ]), 200
 
 
