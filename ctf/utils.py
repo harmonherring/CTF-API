@@ -244,9 +244,8 @@ def get_all_challenge_data(challenge_id: int, current_user: str):
         if flag['id'] not in solved:
             del flag['flag']
         hints = Hint.query.filter_by(flag_id=flag['id']).all()
-        flag['hints'] = [hint.to_dict() for hint in hints]
-        for hint in flag['hints']:
-            del hint['flag_id']
+        returnval['hints'] = [hint.to_dict() for hint in hints]
+        for hint in returnval['hints']:
             if hint['id'] not in used:
                 del hint['hint']
 
