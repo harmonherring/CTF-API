@@ -238,16 +238,15 @@ def get_all_challenge_data(challenge_id: int, current_user: str):
         used_hint.hint_id for used_hint in UsedHint.query.filter_by(username=current_user).all()
     ]
     flags = challenge.flags
-    returnval['flags'] = [flag.to_dict() for flag in flags]
+    returnval['flags'] = {flag.id: flag.to_dict() for flag in flags}
     for flag in returnval['flags']:
-        del flag['challenge_id']
-        if flag['id'] not in solved:
-            del flag['flag']
-        hints = Hint.query.filter_by(flag_id=flag['id']).all()
-        returnval['hints'] = [hint.to_dict() for hint in hints]
-        for hint in returnval['hints']:
-            if hint['id'] not in used:
-                del hint['hint']
+        if returnval['flags'][flag]['id'] not in solved:
+            del returnval['flags'][flag]['flag']
+        hints = Hint.query.filter_by(flag_id=flag).all()
+        returnval['flags'][flag]['hints'] = {hint.id: hint.to_dict() for hint in hints}
+        for hint in returnval['flags'][flag]['hints']:
+            if returnval['flags'][flag]['hints'][hint]['id'] not in used:
+                del returnval['flags'][flag]['hints'][hint]['hint']
 
     return returnval
 

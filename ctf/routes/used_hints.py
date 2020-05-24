@@ -24,8 +24,6 @@ def create_hint(challenge_id: int = 0, flag_id: int = 0, hint_id: int = 0, **kwa
     """
     Operations relating to used hints
 
-    Good lord I can't believe Flask let me do this with the parameters
-
     :POST: Allow a user to pay for a hint
     """
     current_username = kwargs['userinfo'].get('preferred_username')

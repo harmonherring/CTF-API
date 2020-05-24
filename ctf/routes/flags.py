@@ -6,7 +6,7 @@ Contains routes pertaining to the retrieval and creation of flags
 from flask import Blueprint, request, jsonify
 
 from ctf import auth
-from ctf.models import Flag, Challenge, Solved
+from ctf.models import Flag, Challenge, Solved, Hint, UsedHint
 from ctf.utils import delete_flag, has_json_args, expose_userinfo, is_ctf_admin
 from ctf.constants import not_found, collision, not_authorized, no_username
 
@@ -33,10 +33,21 @@ def all_flags(challenge_id: int, **kwargs):
     if not current_username:
         return no_username()
 
-    flags = [flag.to_dict() for flag in Flag.query.filter_by(challenge_id=challenge_id).all()]
+    used_hints = [
+        used_hint.hint_id for used_hint in UsedHint.query.filter_by(username=current_username).all()
+    ]
+    flags = {
+        flag.id: flag.to_dict() for flag in Flag.query.filter_by(challenge_id=challenge_id).all()
+    }
     for flag in flags:
-        if not Solved.query.filter_by(username=current_username, flag_id=flag['id']).first():
-            del flag['flag']
+        if not Solved.query.filter_by(username=current_username, flag_id=flags[flag]['id']).first():
+            del flags[flag]['flag']
+        flags[flag]['hints'] = {
+            hint.id: hint.to_dict() for hint in Hint.query.filter_by(flag_id=flag).all()
+        }
+        for hint in flags[flag]['hints'].values():
+            if hint['id'] not in used_hints:
+                del flags[flag]['hints'][hint['id']]['hint']
     return jsonify(flags), 200
 
 
