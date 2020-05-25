@@ -45,7 +45,7 @@ def all_hints(challenge_id: int, flag_id: int, **kwargs):
 @auth.login_required
 @has_json_args("cost", "hint")
 @expose_userinfo
-def create_hint(challenge_id: int, flag_id: int, **kwargs):
+def create_hint(challenge_id: int = 0, flag_id: int = 0, **kwargs):
     # pylint: disable=unused-argument
     """
     Creates a hint given parameters in the application/json body
