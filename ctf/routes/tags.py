@@ -28,7 +28,7 @@ def all_tags(challenge_id: int):
     if not challenge:
         return not_found()
 
-    return jsonify([tag.to_dict() for tag in challenge.tags]), 200
+    return jsonify([tag.tag for tag in challenge.tags]), 200
 
 
 @tags_bp.route('/<int:challenge_id>/tags/<tag_name>', methods=['POST'])
