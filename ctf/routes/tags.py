@@ -42,8 +42,8 @@ def single_tag(challenge_id: int, tag_name: str, **kwargs):
     if not challenge:
         return not_found()
 
-    tag = ChallengeTag.query.filter(func.lower(ChallengeTag.tag) == func.lower(tag_name),
-                                    ChallengeTag.challenge_id == challenge_id).first()
+    tag = ChallengeTag.query.filter_by(tag=tag_name, challenge_id=challenge_id).first()
+
     if tag:
         return collision()
 
