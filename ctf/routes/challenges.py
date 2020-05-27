@@ -6,8 +6,8 @@ Contains the routes pertaining to the retrieval, creation, and removal of challe
 from flask import Blueprint, request, jsonify
 from sqlalchemy import desc
 
-from ctf import auth
-from ctf.models import Challenge, Difficulty, Category
+from ctf import auth, db
+from ctf.models import Challenge, Difficulty, Category, ChallengeTag
 from ctf.utils import delete_flags, delete_challenge_tags, get_all_challenge_data, has_json_args, \
     expose_userinfo, is_ctf_admin
 from ctf.constants import not_found, no_username, not_authorized
@@ -78,6 +78,15 @@ def create_challenge(**kwargs):
 
     new_challenge = Challenge.create(data['title'], data['description'], data['author'],
                                      submitter, difficulty, category)
+
+    tags = []
+    if tag_names := data.get('tags'):
+        tags = list(dict.fromkeys(tag_names))
+    for tag in tags:
+        new_tag = ChallengeTag(new_challenge['id'], tag)
+        db.session.add(new_tag)
+    db.session.commit()
+
     return jsonify(new_challenge), 201
 
 
