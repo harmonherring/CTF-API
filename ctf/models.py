@@ -109,6 +109,7 @@ class Challenge(db.Model):
     description = Column(Text, nullable=False)
     author = Column(Text, nullable=False)
     submitter = Column(Text, nullable=False)
+    filename = Column(Text)
 
     tags = db.relationship('ChallengeTag', backref='challenges')
     category = relationship('Category')
@@ -116,7 +117,7 @@ class Challenge(db.Model):
     flags = db.relationship('Flag', backref='challenges')
 
     def __init__(self, title: str, description: str, author: str,
-                 submitter: str, difficulty: str, category: str):
+                 submitter: str, difficulty: str, category: str, filename: str = None):
         """
         Creates a Challenge
 
@@ -131,10 +132,11 @@ class Challenge(db.Model):
         self.submitter = submitter
         self.difficulty = difficulty
         self.category = category
+        self.filename = filename
 
     @classmethod
     def create(cls, title: str, description: str, author: str, submitter: str, difficulty: str,
-               category: str) -> dict:
+               category: str, filename: str = None) -> dict:
         """
         Wraps some flask-sqlalchemy functions to immediately commit new Challenge to the database
 
@@ -145,9 +147,11 @@ class Challenge(db.Model):
         :param submitter: The account that submitted this challenge
         :param difficulty: Text description of the difficulty. Must exist in Difficulties table.
         :param category: Text description of the category. Must exist in Categories table.
+        :param filename: Name of the file associated with this Challenge
         :return: The new Challenge
         """
-        new_challenge = Challenge(title, description, author, submitter, difficulty, category)
+        new_challenge = Challenge(title, description, author, submitter, difficulty, category,
+                                  filename)
         db.session.add(new_challenge)
         db.session.commit()
         return new_challenge.to_dict()
@@ -164,7 +168,8 @@ class Challenge(db.Model):
             'description': self.description,
             'tags': [tag.to_dict()['tag'] for tag in self.tags],
             'author': self.author,
-            'submitter': self.submitter
+            'submitter': self.submitter,
+            'filename': self.filename
         }
 
     def delete(self):
