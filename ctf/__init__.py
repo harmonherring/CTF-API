@@ -8,6 +8,7 @@ from flask import Flask
 from flask_sqlalchemy import SQLAlchemy
 from flask_httpauth import HTTPTokenAuth
 from flask_cors import CORS
+from boto3 import client
 
 import config
 
@@ -16,10 +17,14 @@ app.config.from_object(config)
 CORS(app)
 db = SQLAlchemy(app)
 auth = HTTPTokenAuth(scheme='Bearer')
+s3 = client("s3",
+            aws_access_key_id=app.config['S3_ACCESS_KEY_ID'],
+            aws_secret_access_key=app.config['S3_SECRET_ACCESS_KEY'],
+            endpoint_url="https://s3.csh.rit.edu")
 
 # pylint: disable=wrong-import-position
 from ctf.routes import categories, difficulties, challenges, tags, solved, flags, hints, \
-    used_hints, user
+    used_hints, user, s3
 # pylint: enable=wrong-import-position
 
 app.register_blueprint(categories, url_prefix='/categories')
@@ -31,3 +36,4 @@ app.register_blueprint(flags)
 app.register_blueprint(hints)
 app.register_blueprint(used_hints)
 app.register_blueprint(user, url_prefix='/user')
+app.register_blueprint(s3, url_prefix='/s3')

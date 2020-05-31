@@ -23,3 +23,11 @@ OIDC_USERINFO_ENDPOINT = "https://sso.csh.rit.edu/auth/realms/csh/protocol/openi
 
 # CORS config
 CORS_SUPPORTS_CREDENTIALS = True
+
+# File config
+UPLOAD_PATH = "./uploads"
+
+# S3 Configuration
+S3_ACCESS_KEY_ID = environ.get("CTF_S3_ACCESS_KEY_ID", None)
+S3_SECRET_ACCESS_KEY = environ.get("CTF_S3_SECRET_ACCESS_KEY", None)
+S3_ENDPOINT_URL = environ.get("CTF_S3_ENDPOINT_URL", None)
