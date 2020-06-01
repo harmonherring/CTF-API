@@ -26,6 +26,8 @@ CORS_SUPPORTS_CREDENTIALS = True
 
 # File config
 UPLOAD_PATH = "./uploads"
+ALLOWED_MIME_TYPES = ["application/zip", "application/gzip", "application/x-tar",
+                      "application/x-7z-compressed"]
 
 # S3 Configuration
 S3_ACCESS_KEY_ID = environ.get("CTF_S3_ACCESS_KEY_ID", None)

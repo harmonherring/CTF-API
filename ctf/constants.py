@@ -45,3 +45,13 @@ def no_username():
         'status': "error",
         'message': "I can't figure out what your username is"
     }), 401
+
+
+def invalid_mime_type():
+    """
+    Return data when the user uploads a disallowed file type
+    """
+    return jsonify({
+        'status': "error",
+        'message': "Invalid file type"
+    }), 422

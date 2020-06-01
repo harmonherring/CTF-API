@@ -2,13 +2,15 @@
 
 Contains useful functions used across many parts of the API
 """
+import os
 from functools import wraps
 
 import requests
 from flask import request, jsonify
 import jwt
+from werkzeug.utils import secure_filename
 
-from ctf import db, auth, app
+from ctf import db, auth, app, s3
 from ctf.models import UsedHint, Hint, Solved, Flag, ChallengeTag, Challenge
 from ctf.constants import CTF_ADMINS
 
@@ -98,7 +100,7 @@ def has_json_args(*json_args):
     """
     Checks if the request has Content-Type set to application/json and specified arguments
     exist. Should only wrap a Flask route
-    :param args: The arguments to check for
+    :param json_args: The arguments to check for
     :return: The Flask route if success, or jsonified error otherwise
     """
     def decorator(func):
@@ -119,6 +121,50 @@ def has_json_args(*json_args):
                     'status': "error",
                     'message': "Missing the following arguments in your application/json body: "
                                + ', '.join([str(arg) for arg in missing])
+                }), 422
+            return func(*args, **kwargs)
+        return wrapper
+    return decorator
+
+
+def has_formdata_args(*formdata_args, required_files: list = None):
+    """
+    Checks if the request has Content-Type set to multipart/form-data and specified arguments
+    exist. Should only wrap a Flask route
+    :param required_files: The files that should exist in the request
+    :param formdata_args: The arguments to check for
+    :return: The Flask route if success, or jsonified error otherwise
+    """
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            if not request.content_type.startswith('multipart/form-data'):
+                return jsonify({
+                    'status': "error",
+                    'message': "Your Content-Type must be multipart/form-data"
+                }), 415
+            data: dict = request.form.to_dict()
+            missing = []
+            for arg in formdata_args:
+                if not data.get(arg):
+                    missing.append(arg)
+            missing_files = []
+            if required_files:
+                files = request.files
+                for file in required_files:
+                    if not files.get(file):
+                        missing_files.append(file)
+            if missing:
+                return jsonify({
+                    'status': "error",
+                    'message': "Missing the following arguments in your multipart/form-data body: "
+                               + ', '.join([str(arg) for arg in missing])
+                }), 422
+            if missing_files:
+                return jsonify({
+                    'status': "error",
+                    'message': "Missing the following files in your multipart/form-data body: "
+                               + ', '.join([str(arg) for arg in missing_files])
                 }), 422
             return func(*args, **kwargs)
         return wrapper
@@ -233,6 +279,8 @@ def get_all_challenge_data(challenge_id: int, current_user: str):
     if not challenge:
         return None
     returnval = challenge.to_dict()
+    if object_name := returnval['filename']:
+        returnval['download'] = create_presigned_url(object_name)
     solved = [solved.flag_id for solved in Solved.query.filter_by(username=current_user).all()]
     used = [
         used_hint.hint_id for used_hint in UsedHint.query.filter_by(username=current_user).all()
@@ -277,3 +325,57 @@ def is_ctf_admin(groups: list) -> bool:
     if "rtp" in groups or "ctf" in groups:
         return True
     return False
+
+
+def s3_upload_and_create_challenge(title: str, description: str, author: str, submitter: str,
+                                   difficulty: str, category: str, filename: str, tags=None):
+    """
+    Uploads the file with matching filename from local storage to S3, then deletes the local copy
+    :param title: Title of the Challenge
+    :param description: Description of the Challenge
+    :param author: The person who created this challenge
+    :param submitter: The account that submitted this challenge
+    :param difficulty: Text description of the difficulty. Must exist in Difficulties table.
+    :param category: Text description of the category. Must exist in Categories table.
+    :param filename: Name of the file associated with this Challenge and to be uploaded to S3
+    :param new_filename: New name of the file when it's uploaded to S3
+    :param tags: Optional tags to be created after the challenge
+    """
+    filename = secure_filename(filename)
+    filepath = os.path.join(app.config['UPLOAD_PATH'], filename)
+
+    if os.path.exists(filepath):
+        s3.upload_file(filepath, app.config['S3_BUCKET'], filename)
+        os.remove(filepath)
+        new_challenge = Challenge.create(title, description, author, submitter, difficulty,
+                                         category, filename)
+        for tag in tags:
+            new_tag = ChallengeTag(new_challenge['id'], tag)
+            db.session.add(new_tag)
+        db.session.commit()
+
+
+def delete_s3_object(object_name):
+    """
+    Sends request to delete S3 object
+    :param object_name: Name of object to delete
+    """
+    s3.delete_object(Bucket=app.config['S3_BUCKET'], Key=object_name)
+
+
+def create_presigned_url(object_name, expiration=10800):
+    """
+    Creates a presigned URL for an S3 object
+    :param object_name: object name to generate url for
+    :param expiration: How long the link should be valid for
+    :return: Presigned URL
+    """
+    try:
+        params = {
+            'Bucket': app.config['S3_BUCKET'],
+            'Key': object_name
+        }
+        response = s3.generate_presigned_url('get_object', Params=params, ExpiresIn=expiration)
+    except:
+        return None
+    return response

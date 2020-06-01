@@ -2,15 +2,20 @@
 
 Contains the routes pertaining to the retrieval, creation, and removal of challenges
 """
+import os.path
+import uuid
+import threading
 
 from flask import Blueprint, request, jsonify
 from sqlalchemy import desc
+import magic
+from werkzeug.utils import secure_filename
 
-from ctf import auth, db
-from ctf.models import Challenge, Difficulty, Category, ChallengeTag
-from ctf.utils import delete_flags, delete_challenge_tags, get_all_challenge_data, has_json_args, \
-    expose_userinfo, is_ctf_admin
-from ctf.constants import not_found, no_username, not_authorized
+from ctf import auth, app
+from ctf.models import Challenge, Difficulty, Category
+from ctf.utils import delete_flags, delete_challenge_tags, get_all_challenge_data, expose_userinfo,\
+    is_ctf_admin, has_formdata_args, s3_upload_and_create_challenge, delete_s3_object
+from ctf.constants import not_found, no_username, not_authorized, invalid_mime_type
 
 challenges_bp = Blueprint('challenges', __name__)
 
@@ -56,13 +61,13 @@ def all_challenges(**kwargs):
 
 @challenges_bp.route('', methods=['POST'])
 @auth.login_required
-@has_json_args("title", "description", "author", "difficulty", "category")
+@has_formdata_args(["file"], "title", "description", "author", "difficulty", "category")
 @expose_userinfo
 def create_challenge(**kwargs):
     """
     Creates a challenge given parameters in application/json body
     """
-    data = request.get_json()
+    data = request.form.to_dict()
     category = Category.query.filter_by(name=data['category'].lower()).first()
     difficulty = Difficulty.query.filter_by(name=data['difficulty'].lower()).first()
 
@@ -76,18 +81,30 @@ def create_challenge(**kwargs):
     if not submitter:
         return no_username()
 
-    new_challenge = Challenge.create(data['title'], data['description'], data['author'],
-                                     submitter, difficulty, category)
+    file = request.files['file']
+    split = os.path.splitext(secure_filename(file.filename))
+    filename = str(uuid.uuid4()) + str(split[len(split)-1])
+    filepath = os.path.join(app.config['UPLOAD_PATH'], filename)
+    file.save(filepath)
+
+    mime = magic.Magic(mime=True)
+    if not mime.from_file(filepath) in app.config['ALLOWED_MIME_TYPES']:
+        return invalid_mime_type()
 
     tags = []
     if tag_names := data.get('tags'):
-        tags = list(dict.fromkeys(tag_names))
-    for tag in tags:
-        new_tag = ChallengeTag(new_challenge['id'], tag)
-        db.session.add(new_tag)
-    db.session.commit()
+        tags = list(dict.fromkeys(tag_names.split(",")))
 
-    return jsonify(new_challenge), 201
+    threading.Thread(
+        target=s3_upload_and_create_challenge,
+        args=(data['title'], data['description'], data['author'], submitter, difficulty, category,
+              filename, tags)).start()
+
+    return jsonify({
+        'status': "success",
+        'message': "Your submission has been added to the queue and will become visible when "
+                   "processing is complete"
+    }), 202
 
 
 @challenges_bp.route('/<int:challenge_id>', methods=['GET'])
@@ -128,6 +145,12 @@ def delete_challenge(challenge_id: int, **kwargs):
     groups = kwargs['userinfo'].get('groups')
     if (current_username != challenge.submitter) and (not is_ctf_admin(groups)):
         return not_authorized()
+
+    if challenge.filename:
+        threading.Thread(
+            target=delete_s3_object,
+            args=(challenge.filename,)
+        ).start()
 
     delete_challenge_tags(challenge.id)
     delete_flags(challenge.id)
