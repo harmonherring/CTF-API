@@ -61,7 +61,8 @@ def all_challenges(**kwargs):
 
 @challenges_bp.route('', methods=['POST'])
 @auth.login_required
-@has_formdata_args(["file"], "title", "description", "author", "difficulty", "category")
+@has_formdata_args("title", "description", "author", "difficulty", "category",
+                   required_files=["file"])
 @expose_userinfo
 def create_challenge(**kwargs):
     """
