@@ -3,10 +3,10 @@ MAINTAINER Harmon Herring <harmonherring@gmail.com>
 
 RUN ln -sf /usr/share/zoneinfo/America/New_York /etc/localtime
 
-RUN mkdir /opt/ctf-api
+RUN mkdir -p /opt/ctf-api/uploads
 WORKDIR /opt/ctf-api
 
-RUN apk update && apk add --no-cache gcc musl-dev libffi-dev postgresql-dev
+RUN apk update && apk add --no-cache gcc musl-dev libffi-dev postgresql-dev libmagic
 
 ADD requirements.txt .
 RUN pip install -r requirements.txt
