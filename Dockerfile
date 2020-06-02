@@ -7,11 +7,13 @@ RUN mkdir -p /opt/ctf-api/uploads
 RUN chmod 777 /opt/ctf-api/uploads
 WORKDIR /opt/ctf-api
 
-RUN apk update && apk add --no-cache gcc musl-dev libffi-dev postgresql-dev libmagic
+RUN apk update && apk add --no-cache gcc make musl-dev libffi-dev postgresql-dev libmagic
+RUN pip install --upgrade pip setuptools wheel
+RUN pip install gunicorn[gevent] 
 
 ADD requirements.txt .
 RUN pip install -r requirements.txt
-RUN pip install gunicorn
+
 ADD . .
 
-CMD ["gunicorn", "app:app", "--bind=0.0.0.0:8080", "--access-logfile=-"]
+CMD ["gunicorn", "--workers=4", "app:app", "--bind=0.0.0.0:8080", "-k gevent",  "--access-logfile=-"]
