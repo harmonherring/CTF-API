@@ -2,8 +2,9 @@
 
 This module contains the models for each table in the database
 """
+from datetime import datetime
 
-from sqlalchemy import Column, ForeignKey, Integer, SmallInteger, Text
+from sqlalchemy import Column, ForeignKey, Integer, SmallInteger, Text, DateTime
 from sqlalchemy.orm import relationship
 
 from ctf import db
@@ -110,6 +111,7 @@ class Challenge(db.Model):
     author = Column(Text, nullable=False)
     submitter = Column(Text, nullable=False)
     filename = Column(Text)
+    ts = Column(DateTime, default=datetime.utcnow().isoformat)
 
     tags = db.relationship('ChallengeTag', backref='challenges')
     category = relationship('Category')
@@ -169,6 +171,7 @@ class Challenge(db.Model):
             'tags': [tag.to_dict()['tag'] for tag in self.tags],
             'author': self.author,
             'submitter': self.submitter,
+            'ts': self.ts,
             'filename': self.filename
         }
 
