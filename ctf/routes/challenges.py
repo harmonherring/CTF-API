@@ -28,12 +28,15 @@ def all_challenges(**kwargs):
     Get all challenges
     """
     # 'limit' and 'offset' URL parameters can be used to modify which challenges are returned
-    limit = 10
-    offset = 1
-    if limit_val := request.args.get('limit'):
-        limit = int(limit_val)
-    if offset_val := request.args.get('offset'):
-        offset = int(offset_val)
+    try:
+        limit = int(request.args.get('limit', default=10))
+    except ValueError:
+        limit = 10
+    try:
+        offset = int(request.args.get('offset', default=1))
+    except ValueError:
+        offset = 1
+    search_query = request.args.get('search')
 
     # Category and Difficulty parameters are a comma-separated list of categories/difficulties
     categories = []
@@ -52,6 +55,12 @@ def all_challenges(**kwargs):
         challenges = challenges.filter(Challenge.category_name.in_(categories))
     if difficulties:
         challenges = challenges.filter(Challenge.difficulty_name.in_(difficulties))
+    if search_query:
+        challenges = challenges.filter(
+            getattr(Challenge, 'description').ilike(f'%{search_query}%') |
+            getattr(Challenge, 'title').ilike(f'%{search_query}%') |
+            getattr(Challenge, 'submitter').ilike(f'%{search_query}%')
+        )
     challenges = challenges.order_by(desc(Challenge.id)).paginate(offset, limit).items
 
     return jsonify([
