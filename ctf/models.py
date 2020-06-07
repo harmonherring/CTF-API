@@ -347,6 +347,7 @@ class Solved(db.Model):
 
     flag_id = Column(ForeignKey('flags.id'), primary_key=True, nullable=False, index=True)
     username = Column(Text, primary_key=True, nullable=False)
+    ts = Column(DateTime, default=datetime.utcnow().isoformat, nullable=False)
 
     flag = relationship('Flag')
 
@@ -379,7 +380,8 @@ class Solved(db.Model):
         """
         return {
             'flag_id': self.flag_id,
-            'username': self.username
+            'username': self.username,
+            'ts': self.ts
         }
 
     def delete(self):
@@ -397,6 +399,7 @@ class UsedHint(db.Model):
 
     hint_id = Column(ForeignKey('hints.id'), primary_key=True, nullable=False, index=True)
     username = Column(Text, primary_key=True, nullable=False)
+    ts = Column(DateTime, default=datetime.utcnow().isoformat, nullable=False)
 
     hint = relationship('Hint')
 
@@ -429,5 +432,6 @@ class UsedHint(db.Model):
         """
         return {
             'hint_id': self.hint_id,
-            'username': self.username
+            'username': self.username,
+            'ts': self.ts
         }
