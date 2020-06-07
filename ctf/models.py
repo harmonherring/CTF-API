@@ -4,7 +4,7 @@ This module contains the models for each table in the database
 """
 from datetime import datetime
 
-from sqlalchemy import Column, ForeignKey, Integer, SmallInteger, Text, DateTime
+from sqlalchemy import Column, ForeignKey, Integer, SmallInteger, Text, DateTime, Boolean
 from sqlalchemy.orm import relationship
 
 from ctf import db
@@ -17,8 +17,9 @@ class Category(db.Model):
 
     name = Column(Text, primary_key=True)
     description = Column(Text, nullable=False)
+    upload_required = Column(Boolean)
 
-    def __init__(self, name: str, description: str):
+    def __init__(self, name: str, description: str, upload_required: bool):
         """
         Initialization function for a Category
 
@@ -27,9 +28,10 @@ class Category(db.Model):
         """
         self.name = name
         self.description = description
+        self.upload_required = upload_required
 
     @classmethod
-    def create(cls, name: str, description: str) -> dict:
+    def create(cls, name: str, description: str, upload_required: bool) -> dict:
         """
         Wraps flask-sqlalchemy functions to immediately create a category
 
@@ -37,7 +39,7 @@ class Category(db.Model):
         :param description: Description of the category
         :return: Dictionary representation of a Category
         """
-        new_category = Category(name, description)
+        new_category = Category(name, description, upload_required)
         db.session.add(new_category)
         db.session.commit()
         return new_category.to_dict()
@@ -48,7 +50,8 @@ class Category(db.Model):
         """
         return {
             'name': self.name,
-            'description': self.description
+            'description': self.description,
+            'upload_required': bool(self.upload_required)
         }
 
     def delete(self):

@@ -40,7 +40,9 @@ def create_new_category():
     if check_existing_category:
         return collision()
 
-    new_category = Category.create(data['name'].lower(), data['description'])
+    upload_required = bool(data.get("upload_required"))
+
+    new_category = Category.create(data['name'].lower(), data['description'], upload_required)
     return jsonify(new_category), 201
 
 

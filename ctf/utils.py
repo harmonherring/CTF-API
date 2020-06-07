@@ -12,7 +12,7 @@ from werkzeug.utils import secure_filename
 
 from ctf import db, auth, app, s3
 from ctf.models import UsedHint, Hint, Solved, Flag, ChallengeTag, Challenge
-from ctf.constants import CTF_ADMINS
+from ctf.constants import CTF_ADMINS, missing_body_parts
 
 
 @auth.verify_token
@@ -117,11 +117,7 @@ def has_json_args(*json_args):
                 if arg not in data.keys():
                     missing.append(arg)
             if missing:
-                return jsonify({
-                    'status': "error",
-                    'message': "Missing the following arguments in your application/json body: "
-                               + ', '.join([str(arg) for arg in missing])
-                }), 422
+                return missing_body_parts("application/json", *missing)
             return func(*args, **kwargs)
         return wrapper
     return decorator
@@ -155,17 +151,9 @@ def has_formdata_args(*formdata_args, required_files: list = None):
                     if not files.get(file):
                         missing_files.append(file)
             if missing:
-                return jsonify({
-                    'status': "error",
-                    'message': "Missing the following arguments in your multipart/form-data body: "
-                               + ', '.join([str(arg) for arg in missing])
-                }), 422
+                return missing_body_parts("multipart/form-data", *missing)
             if missing_files:
-                return jsonify({
-                    'status': "error",
-                    'message': "Missing the following files in your multipart/form-data body: "
-                               + ', '.join([str(arg) for arg in missing_files])
-                }), 422
+                return missing_body_parts("multipart/form-data", *missing_files)
             return func(*args, **kwargs)
         return wrapper
     return decorator

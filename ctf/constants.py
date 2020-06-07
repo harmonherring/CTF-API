@@ -55,3 +55,16 @@ def invalid_mime_type():
         'status': "error",
         'message': "Invalid file type"
     }), 422
+
+
+def missing_body_parts(body_type: str, *args):
+    """
+    Return data when user is missing required parts of the request body
+    :param body_type: Required request body type
+    :param args: Missing arguments
+    """
+    return jsonify({
+        'status': "error",
+        'message': "Missing the following arguments in your " + body_type + " body: " +
+                   ', '.join([str(arg) for arg in args])
+    }), 422

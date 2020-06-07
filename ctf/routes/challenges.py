@@ -15,7 +15,8 @@ from ctf import auth, app
 from ctf.models import Challenge, Difficulty, Category
 from ctf.utils import delete_flags, delete_challenge_tags, get_all_challenge_data, expose_userinfo,\
     is_ctf_admin, has_formdata_args, s3_upload_and_create_challenge, delete_s3_object
-from ctf.constants import not_found, no_username, not_authorized, invalid_mime_type
+from ctf.constants import not_found, no_username, not_authorized, invalid_mime_type, \
+    missing_body_parts
 
 challenges_bp = Blueprint('challenges', __name__)
 
@@ -70,8 +71,7 @@ def all_challenges(**kwargs):
 
 @challenges_bp.route('', methods=['POST'])
 @auth.login_required
-@has_formdata_args("title", "description", "author", "difficulty", "category",
-                   required_files=["file"])
+@has_formdata_args("title", "description", "author", "difficulty", "category")
 @expose_userinfo
 def create_challenge(**kwargs):
     """
@@ -91,11 +91,14 @@ def create_challenge(**kwargs):
     if not submitter:
         return no_username()
 
-    file = request.files['file']
-    split = os.path.splitext(secure_filename(file.filename))
-    filename = str(uuid.uuid4()) + str(split[len(split)-1])
-    filepath = os.path.join(app.config['UPLOAD_PATH'], filename)
-    file.save(filepath)
+    file = request.files.get('file')
+    if category.upload_required and not file:
+        return missing_body_parts("multipart/form-data", "file")
+    else:
+        split = os.path.splitext(secure_filename(file.filename))
+        filename = str(uuid.uuid4()) + str(split[len(split)-1])
+        filepath = os.path.join(app.config['UPLOAD_PATH'], filename)
+        file.save(filepath)
 
     mime = magic.Magic(mime=True)
     if not mime.from_file(filepath) in app.config['ALLOWED_MIME_TYPES']:
