@@ -34,8 +34,10 @@ def all_hints(challenge_id: int, flag_id: int, **kwargs):
 
     # Delete a hint's data if a user hasn't unlocked it
     hints = [hint.to_dict() for hint in Hint.query.filter_by(flag_id=flag_id).all()]
+    is_flag_creator = flag.challenge.submitter == current_username
     for hint in hints:
-        if not UsedHint.query.filter_by(hint_id=hint['id'], username=current_username).first():
+        if not is_flag_creator and \
+           not UsedHint.query.filter_by(hint_id=hint['id'], username=current_username).first():
             del hint['hint']
     return jsonify(hints), 200
 
@@ -61,8 +63,6 @@ def create_hint(challenge_id: int = 0, flag_id: int = 0, **kwargs):
     data = request.get_json()
     new_hint = Hint.create(data['cost'], data['hint'], flag_id)
 
-    # TODO: Remove this, change the hint return functions to reveal hint if current_user is creator
-    UsedHint.create(new_hint['id'], current_username)
     return jsonify(new_hint), 201
 
 

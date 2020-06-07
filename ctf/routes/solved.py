@@ -59,6 +59,12 @@ def solve_flag(challenge_id: int, **kwargs):
     if not current_username:
         return no_username()
 
+    if challenge.submitter == current_username:
+        return jsonify({
+            'status': "error",
+            'message': "You created this flag!"
+        }), 403
+
     for flag in flags:
         if flag.flag == flag_attempt:
             check_solved = Solved.query.filter_by(flag_id=flag.id,

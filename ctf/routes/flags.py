@@ -33,20 +33,22 @@ def all_flags(challenge_id: int, **kwargs):
     if not current_username:
         return no_username()
 
-    used_hints = [
+    used_hints = set(
         used_hint.hint_id for used_hint in UsedHint.query.filter_by(username=current_username).all()
-    ]
+    )
     flags = {
         flag.id: flag.to_dict() for flag in Flag.query.filter_by(challenge_id=challenge_id).all()
     }
     for flag in flags:
-        if not Solved.query.filter_by(username=current_username, flag_id=flags[flag]['id']).first():
+        is_creator = challenge.submitter == current_username
+        if not is_creator and \
+           not Solved.query.filter_by(username=current_username, flag_id=flags[flag]['id']).first():
             del flags[flag]['flag']
         flags[flag]['hints'] = {
             hint.id: hint.to_dict() for hint in Hint.query.filter_by(flag_id=flag).all()
         }
         for hint in flags[flag]['hints'].values():
-            if hint['id'] not in used_hints:
+            if not is_creator and hint['id'] not in used_hints:
                 del flags[flag]['hints'][hint['id']]['hint']
     return jsonify(flags), 200
 
@@ -76,7 +78,6 @@ def add_flag(challenge_id: int, **kwargs):
         return not_authorized()
 
     new_flag = Flag.create(data['point_value'], data['flag'], challenge_id)
-    Solved.create(new_flag['id'], challenge.submitter)
     return jsonify(new_flag), 201
 
 

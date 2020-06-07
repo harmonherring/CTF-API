@@ -264,24 +264,25 @@ def get_all_challenge_data(challenge_id: int, current_user: str):
     """
     # This is a yikes
     challenge = Challenge.query.filter_by(id=challenge_id).first()
+    is_creator = challenge.submitter == current_user
     if not challenge:
         return None
     returnval = challenge.to_dict()
     if object_name := returnval['filename']:
         returnval['download'] = create_presigned_url(object_name)
-    solved = [solved.flag_id for solved in Solved.query.filter_by(username=current_user).all()]
-    used = [
+    solved = set(solved.flag_id for solved in Solved.query.filter_by(username=current_user).all())
+    used = set(
         used_hint.hint_id for used_hint in UsedHint.query.filter_by(username=current_user).all()
-    ]
+    )
     flags = challenge.flags
     returnval['flags'] = {flag.id: flag.to_dict() for flag in flags}
     for flag in returnval['flags']:
-        if returnval['flags'][flag]['id'] not in solved:
+        if not is_creator and returnval['flags'][flag]['id'] not in solved:
             del returnval['flags'][flag]['flag']
         hints = Hint.query.filter_by(flag_id=flag).all()
         returnval['flags'][flag]['hints'] = {hint.id: hint.to_dict() for hint in hints}
         for hint in returnval['flags'][flag]['hints']:
-            if returnval['flags'][flag]['hints'][hint]['id'] not in used:
+            if not is_creator and returnval['flags'][flag]['hints'][hint]['id'] not in used:
                 del returnval['flags'][flag]['hints'][hint]['hint']
 
     return returnval
