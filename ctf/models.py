@@ -243,6 +243,7 @@ class Flag(db.Model):
 
     challenge = relationship('Challenge')
     hints = relationship('Hint')
+    solved = relationship('Solved')
 
     def __init__(self, point_value: int, flag: str, challenge_id: int):
         """

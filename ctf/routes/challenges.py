@@ -7,7 +7,7 @@ import uuid
 import threading
 
 from flask import Blueprint, request, jsonify
-from sqlalchemy import desc
+from sqlalchemy import desc, asc
 import magic
 from werkzeug.utils import secure_filename
 
@@ -38,6 +38,8 @@ def all_challenges(**kwargs):
     except ValueError:
         offset = 1
     search_query = request.args.get('search')
+    sort_by = request.args.get('sort_by')
+    order_by = request.args.get('order_by')
 
     # Category and Difficulty parameters are a comma-separated list of categories/difficulties
     categories = []
@@ -62,7 +64,12 @@ def all_challenges(**kwargs):
             getattr(Challenge, 'title').ilike(f'%{search_query}%') |
             getattr(Challenge, 'submitter').ilike(f'%{search_query}%')
         )
-    challenges = challenges.order_by(desc(Challenge.id)).paginate(offset, limit).items
+    order_op = asc if order_by == "asc" else desc
+    if sort_by in ('date', 'ts'):
+        sort_query = order_op(Challenge.ts)
+    else:
+        sort_query = order_op(Challenge.ts)
+    challenges = challenges.order_by(sort_query).paginate(offset, limit).items
 
     return jsonify([
         get_all_challenge_data(challenge.id, current_user) for challenge in challenges
