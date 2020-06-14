@@ -7,7 +7,7 @@ from flask import Blueprint, jsonify
 
 from ctf import auth
 from ctf.models import UsedHint, Hint
-from ctf.utils import expose_userinfo
+from ctf.utils import expose_userinfo, get_user_score
 from ctf.constants import collision, no_username, not_found
 
 used_hints_bp = Blueprint('used_hints', __name__)
@@ -45,6 +45,11 @@ def create_hint(challenge_id: int = 0, flag_id: int = 0, hint_id: int = 0, **kwa
             'message': "You created this hint!"
         }), 403
 
-    # TODO: Check that the user has enough points for the cost
+    if get_user_score(current_username) - hint.cost < 0:
+        return jsonify({
+            'status': "error",
+            'message': "You don't have enough points to purchase this hint!"
+        }), 422
+
     new_used_hint = UsedHint.create(hint_id, current_username)
     return jsonify(new_used_hint.hint.to_dict()), 201
