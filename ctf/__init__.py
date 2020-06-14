@@ -23,8 +23,7 @@ s3 = client("s3",
             endpoint_url="https://s3.csh.rit.edu")
 
 # pylint: disable=wrong-import-position
-from ctf.routes import categories, difficulties, challenges, tags, solved, flags, hints, \
-    used_hints, user, score
+from ctf.routes import categories, difficulties, challenges, tags, solved, flags, hints, user, score
 # pylint: enable=wrong-import-position
 
 
@@ -59,6 +58,5 @@ app.register_blueprint(tags, url_prefix='/challenges')
 app.register_blueprint(solved, url_prefix='/challenges')
 app.register_blueprint(flags)
 app.register_blueprint(hints)
-app.register_blueprint(used_hints)
 app.register_blueprint(user, url_prefix='/user')
 app.register_blueprint(score, url_prefix='/scores')
