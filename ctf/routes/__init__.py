@@ -12,3 +12,4 @@ from .flags import flags_bp as flags
 from .hints import hints_bp as hints
 from .used_hints import used_hints_bp as used_hints
 from .user import user_bp as user
+from .scores import score_bp as score

@@ -297,7 +297,7 @@ class Hint(db.Model):
     __tablename__ = 'hints'
 
     id = Column(Integer, primary_key=True)
-    cost = Column(SmallInteger, nullable=False)
+    cost = Column(Integer, nullable=False)
     hint = Column(Text, nullable=False)
     flag_id = Column(ForeignKey('flags.id'), nullable=False, index=True)
 

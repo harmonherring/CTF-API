@@ -368,3 +368,17 @@ def create_presigned_url(object_name, expiration=10800):
     except:
         return None
     return response
+
+
+def get_user_score(username: str):
+    """
+    Retrieves the score of a particular user
+    :param username: User to retrieve the score of
+    :return: Score of the user
+    """
+    score = 0
+    for solved in Solved.query.filter_by(username=username).all():
+        score += solved.flag.point_value
+    for used in UsedHint.query.filter_by(username=username).all():
+        score -= used.hint.cost
+    return score
