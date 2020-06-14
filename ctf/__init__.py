@@ -4,7 +4,7 @@ Contains the globally-required objects for the API to function.
 Loads blueprints to their respective routes.
 """
 
-from flask import Flask
+from flask import Flask, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_httpauth import HTTPTokenAuth
 from flask_cors import CORS
@@ -26,6 +26,31 @@ s3 = client("s3",
 from ctf.routes import categories, difficulties, challenges, tags, solved, flags, hints, \
     used_hints, user, score
 # pylint: enable=wrong-import-position
+
+
+@app.errorhandler(404)
+def handle_404(error):
+    """
+    Handles HTTP 404 errors
+    :param error: Error message
+    """
+    return jsonify({
+        'status': "error",
+        'message': str(error)
+    }), 404
+
+
+@app.errorhandler(500)
+def handle_500(error):
+    """
+    Handles HTTP 500 errors
+    :param error: Error message
+    """
+    return jsonify({
+        'status': "error",
+        'message': str(error)
+    }), 500
+
 
 app.register_blueprint(categories, url_prefix='/categories')
 app.register_blueprint(difficulties, url_prefix='/difficulties')
