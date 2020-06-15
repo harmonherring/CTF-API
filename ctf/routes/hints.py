@@ -104,7 +104,7 @@ def purchase_hint(challenge_id: int = 0, flag_id: int = 0, hint_id: int = 0, **k
             'message': "You already solved the flag associated with this hint!"
         }), 422
 
-    if get_user_score(current_username) - hint.cost < 0:
+    if get_user_score(current_username)[0] - hint.cost < 0:
         return jsonify({
             'status': "error",
             'message': "You don't have enough points to purchase this hint!"

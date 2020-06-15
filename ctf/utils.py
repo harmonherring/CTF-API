@@ -377,8 +377,10 @@ def get_user_score(username: str):
     :return: Score of the user
     """
     score = 0
+    solved_flags = 0
     for solved in Solved.query.filter_by(username=username).all():
         score += solved.flag.point_value
+        solved_flags += 1
     for used in UsedHint.query.filter_by(username=username).all():
         score -= used.hint.cost
-    return score
+    return score, solved_flags
