@@ -22,22 +22,29 @@ def get_all_scores():
     URL Parameters:
         :url_param after: Request scores after this date
         :url_param before: Request scores before this date
+        :url_param limit: Limit the number of user scores that are requested
     :TODO: Use SQL queries so this is more efficient
     """
-    try:
-        after = datetime.strptime(request.args.get('after', ''), "%Y-%m-%d%H:%M:%S")
-    except ValueError or TypeError:
-        return jsonify({
-            'status': "error",
-            'message': "Date should be formatted as %Y-%m-%d%H:%M:%S"
-        }), 400
-    try:
-        before = datetime.strptime(request.args.get('before', ''), "%Y-%m-%d%H:%M:%S")
-    except ValueError or TypeError:
-        return jsonify({
-            'status': "error",
-            'message': "Date should be formatted as %Y-%m-%d%H:%M:%S"
-        }), 400
+    limit = int(request.args.get('limit'))
+    after = request.args.get('after')
+    before = request.args.get('before')
+
+    if after:
+        try:
+            after = datetime.strptime(request.args.get('after', ''), "%Y-%m-%d%H:%M:%S")
+        except:
+            return jsonify({
+                'status': "error",
+                'message': "Date should be formatted as %Y-%m-%d%H:%M:%S"
+            }), 400
+    if before:
+        try:
+            before = datetime.strptime(request.args.get('before', ''), "%Y-%m-%d%H:%M:%S")
+        except:
+            return jsonify({
+                'status': "error",
+                'message': "Date should be formatted as %Y-%m-%d%H:%M:%S"
+            }), 400
 
     solved_query = Solved.query
     hint_query = UsedHint.query
@@ -61,6 +68,34 @@ def get_all_scores():
     for used_hint in hint_query.all():
         all_scores[used_hint.username]['score'] = all_scores[used_hint.username]['score'] - \
             used_hint.hint.flag.point_value
+
+    if limit and 0 < limit < len(all_scores):
+        # Get and sort all scores from dictionary
+        scores = [x['score'] for x in all_scores.values()]
+        scores.sort()
+        score_threshold = scores[limit-1]
+        for i in list(all_scores.keys()):
+            if all_scores[i]['score'] < score_threshold:
+                del all_scores[i]
+        if len(all_scores) > limit:
+            # This occurs if the limit and limit+1 person have the same score
+            most_flags = max([x['solved_flags'] for x in all_scores.values() if x['score'] ==
+                              score_threshold])
+            # Delete those who are at the threshold and have fewer than the maximum number of
+            # flags at the threshold
+            for i in list(all_scores.keys()):
+                if all_scores[i]['score'] == score_threshold and \
+                        all_scores[i]['solved_flags'] < most_flags:
+                    del all_scores[i]
+            if len(all_scores) > limit:
+                # This will occur if two people have the same score and number of flags
+                # Delete them at random
+                for i in list(all_scores.keys()):
+                    if all_scores[i]['score'] == score_threshold and \
+                            all_scores[i]['solved_flags'] == most_flags:
+                        del all_scores[i]
+                        break
+
     return jsonify(all_scores), 200
 
 
