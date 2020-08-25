@@ -47,13 +47,13 @@ def no_username():
     }), 401
 
 
-def invalid_mime_type():
+def invalid_mime_type(mime_type: str):
     """
     Return data when the user uploads a disallowed file type
     """
     return jsonify({
         'status': "error",
-        'message': "Invalid file type"
+        'message': "Invalid file type: " + mime_type
     }), 422
 
 

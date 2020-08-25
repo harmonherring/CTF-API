@@ -109,7 +109,7 @@ def create_challenge(**kwargs):
 
     mime = magic.Magic(mime=True)
     if not mime.from_file(filepath) in app.config['ALLOWED_MIME_TYPES']:
-        return invalid_mime_type()
+        return invalid_mime_type(mime.from_file(filepath))
 
     tags = []
     if tag_names := data.get('tags'):
