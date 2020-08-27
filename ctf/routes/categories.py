@@ -21,9 +21,11 @@ def get_all_categories():
     TODO: Might be a good idea to give each category an id and have Challenges hold that id instead
         of name
     """
-    categories = [category.to_dict() for category in Category.query.all()]
+    categories = {
+        category.name: category.to_dict() for category in Category.query.all()
+    }
     for category in categories:
-        category['count'] = Challenge.query.filter_by(category_name=category['name']).count()
+        categories[category]['count'] = Challenge.query.filter_by(category_name=category).count()
     return jsonify(categories), 200
 
 
