@@ -69,7 +69,7 @@ def all_challenges(**kwargs):
         sort_query = order_op(Challenge.ts)
     else:
         sort_query = order_op(Challenge.ts)
-    challenges = challenges.order_by(sort_query).paginate(offset, limit).items
+    challenges = challenges.order_by(sort_query).paginate(offset, limit, error_out=False).items
 
     return jsonify([
         get_all_challenge_data(challenge.id, current_user) for challenge in challenges
