@@ -67,7 +67,7 @@ def get_all_scores():
         all_scores[solved.username]['solved_flags'] += 1
     for used_hint in hint_query.all():
         all_scores[used_hint.username]['score'] = all_scores[used_hint.username]['score'] - \
-            used_hint.hint.flag.point_value
+            used_hint.hint.cost
 
     if limit and 0 < limit < len(all_scores):
         # Get and sort all scores from dictionary
