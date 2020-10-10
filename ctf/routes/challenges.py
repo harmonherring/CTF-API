@@ -3,7 +3,6 @@
 Contains the routes pertaining to the retrieval, creation, and removal of challenges
 """
 import os.path
-import uuid
 import threading
 
 from flask import Blueprint, request, jsonify
@@ -16,7 +15,7 @@ from ctf.models import Challenge, Difficulty, Category
 from ctf.utils import delete_flags, delete_challenge_tags, get_all_challenge_data, expose_userinfo,\
     is_ctf_admin, has_formdata_args, s3_upload_and_create_challenge, delete_s3_object
 from ctf.constants import not_found, no_username, not_authorized, invalid_mime_type, \
-    missing_body_parts
+    missing_body_parts, collision
 
 challenges_bp = Blueprint('challenges', __name__)
 
@@ -98,12 +97,16 @@ def create_challenge(**kwargs):
     if not submitter:
         return no_username()
 
+    # check if challenge with matching title already exists
+    if Challenge.query.filter(Challenge.title.ilike('test')).first():
+        return collision()
+
     file = request.files.get('file')
     if category.upload_required and not file:
         return missing_body_parts("multipart/form-data", "file")
     else:
         split = os.path.splitext(secure_filename(file.filename))
-        filename = str(uuid.uuid4()) + str(split[len(split)-1])
+        filename = secure_filename(data['title'] + str(split[-1]))
         filepath = os.path.join(app.config['UPLOAD_PATH'], filename)
         file.save(filepath)
 
