@@ -109,7 +109,7 @@ class Challenge(db.Model):
     id = Column(Integer, primary_key=True)
     difficulty_name = Column(ForeignKey('difficulties.name'), nullable=False, index=True)
     category_name = Column(ForeignKey('categories.name'), nullable=False, index=True)
-    title = Column(Text, nullable=False)
+    title = Column(Text, nullable=False, unique=True)
     description = Column(Text, nullable=False)
     author = Column(Text, nullable=False)
     submitter = Column(Text, nullable=False)
